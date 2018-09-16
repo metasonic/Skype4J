@@ -25,22 +25,23 @@ import com.samczsun.skype4j.exceptions.ConnectionException;
 import com.samczsun.skype4j.internal.Endpoints;
 import com.samczsun.skype4j.internal.Factory;
 import com.samczsun.skype4j.internal.SkypeImpl;
+import com.samczsun.skype4j.internal.Utils;
 import com.samczsun.skype4j.internal.participants.BotImpl;
 import com.samczsun.skype4j.internal.participants.ParticipantImpl;
 import com.samczsun.skype4j.internal.participants.UserImpl;
-import com.samczsun.skype4j.internal.Utils;
 import com.samczsun.skype4j.internal.participants.info.ContactImpl;
 import com.samczsun.skype4j.participants.Participant;
 import com.samczsun.skype4j.participants.info.Contact;
 
 import javax.imageio.ImageIO;
-import java.awt.Graphics2D;
+import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.*;
+import java.util.List;
 import java.util.stream.Collectors;
 
 public class ChatGroup extends ChatImpl implements GroupChat {
@@ -59,7 +60,7 @@ public class ChatGroup extends ChatImpl implements GroupChat {
         super(skype, identity);
     }
 
-    public void load() throws ConnectionException, ChatNotFoundException {
+    public void load() throws ConnectionException {
         JsonObject object = Endpoints.CHAT_INFO_URL
                 .open(getClient(), getIdentity())
                 .as(JsonObject.class)

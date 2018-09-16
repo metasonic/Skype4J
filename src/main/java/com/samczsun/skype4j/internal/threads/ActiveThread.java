@@ -21,7 +21,9 @@ import com.samczsun.skype4j.exceptions.ConnectionException;
 import com.samczsun.skype4j.exceptions.handler.ErrorSource;
 import com.samczsun.skype4j.internal.Endpoints;
 import com.samczsun.skype4j.internal.SkypeImpl;
+import com.samczsun.skype4j.internal.Utils;
 
+import java.time.Duration;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -43,30 +45,36 @@ public class ActiveThread extends Thread {
 
     public void run() {
         while (skype.isLoggedIn() && !stop.get()) {
-            if (skype.isAuthenticated() && !stop.get()) {
-                try {
-                    Endpoints.ACTIVE
-                            .open(skype, endpoint)
-                            .expect(201, "While submitting active in " + this.getName())
-                            .post(new JsonObject().add("timeout", 12));
-                } catch (ConnectionException e) {
-                    skype.handleError(ErrorSource.SESSION_ACTIVE, e, false);
-                }
-                if (stop.get()) {
-                    return;
-                }
-                try {
-                    Thread.sleep(12000);
-                } catch (InterruptedException ignored) {
-                }
-            } else {
+            if (!skype.isAuthenticated() || !skype.isRegistrationTokenValid()) {
                 return;
+            }
+            try {
+                Endpoints.ACTIVE.open(skype, endpoint)
+                        .header("BehaviorOverride", "redirectAs404")
+                        .expect(201, "While submitting active in " + this.getName())
+                        .on(404, (connection) -> Endpoints
+                                .custom(Endpoints.ENDPOINTS_URL.url() + "/" + endpoint, skype)
+                                .expect(200, "While refreshing endpoint")
+                                .header("Authentication", "skypetoken=" + skype.getSkypeToken())
+                                .header("LockAndKey", Utils.generateChallengeHeader())
+                                .put(new JsonObject().add("endpointFeatures", "Agent")))
+                        .post(new JsonObject().add("timeout", 12));
+            } catch (ConnectionException e) {
+                skype.handleError(ErrorSource.SESSION_ACTIVE, e, false);
+            }
+            if (stop.get()) {
+                return;
+            }
+            try {
+                Thread.sleep(Duration.ofSeconds(12).toMillis());
+            } catch (InterruptedException ignored) {
             }
         }
     }
 
     public void kill() {
         stop.set(true);
+        System.out.println("ActiveCheckThread is shutting down");
         this.interrupt();
     }
 }

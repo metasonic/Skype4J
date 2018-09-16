@@ -20,9 +20,9 @@ import com.samczsun.skype4j.exceptions.ConnectionException;
 import com.samczsun.skype4j.internal.Endpoints;
 import com.samczsun.skype4j.internal.client.FullClient;
 import com.samczsun.skype4j.participants.info.Contact;
+import org.apache.commons.lang3.StringUtils;
 
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
+import java.time.Instant;
 import java.util.Date;
 
 public class ContactRequestImpl implements Contact.ContactRequest {
@@ -32,9 +32,8 @@ public class ContactRequestImpl implements Contact.ContactRequest {
     private final String message;
     private final FullClient skype;
 
-    public ContactRequestImpl(String time, String sender, String message, FullClient skype) throws ParseException {
-        SimpleDateFormat FORMAT = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSSSSS");
-        this.time = FORMAT.parse(time);
+    public ContactRequestImpl(String time, String sender, String message, FullClient skype) {
+        this.time = Date.from(Instant.parse(time));
         this.sender = sender;
         this.message = message;
         this.skype = skype;
@@ -58,17 +57,20 @@ public class ContactRequestImpl implements Contact.ContactRequest {
     @Override
     public void accept() throws ConnectionException {
         Endpoints.ACCEPT_CONTACT_REQUEST
-                .open(skype, sender)
-                .expect(201, "While accepting contact request")
+                .open(skype, skype.getUsername(), sender)
+                .expect(200, "While accepting contact request")
                 .put();
+        getSender().authorize();
     }
 
     @Override
     public void decline() throws ConnectionException {
         Endpoints.DECLINE_CONTACT_REQUEST
-                .open(skype, sender)
-                .expect(201, "While declining contact request")
+                .open(skype, skype.getUsername(), sender)
+                .expect(200, "While declining contact request")
                 .put();
+        Endpoints.UNAUTHORIZE_CONTACT_SELF.open(skype, StringUtils.prependIfMissing(sender, "8:"))
+                .expect(200, "While unauthorizing contact").delete();
     }
 
     @Override

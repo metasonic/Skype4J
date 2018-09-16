@@ -25,8 +25,6 @@ import com.samczsun.skype4j.formatting.Text;
 import com.samczsun.skype4j.internal.Endpoints;
 import com.samczsun.skype4j.internal.SkypeImpl;
 import com.samczsun.skype4j.internal.participants.ParticipantImpl;
-import com.samczsun.skype4j.participants.Participant;
-import com.samczsun.skype4j.participants.User;
 
 public class SentMessageImpl extends ChatMessageImpl implements SentMessage {
     public SentMessageImpl(Chat chat, ParticipantImpl user, String id, String clientId, long time, Message message, SkypeImpl skype) {

@@ -21,8 +21,6 @@ import com.samczsun.skype4j.chat.messages.ReceivedMessage;
 import com.samczsun.skype4j.formatting.Message;
 import com.samczsun.skype4j.internal.SkypeImpl;
 import com.samczsun.skype4j.internal.participants.ParticipantImpl;
-import com.samczsun.skype4j.participants.Participant;
-import com.samczsun.skype4j.participants.User;
 
 public class ReceivedMessageImpl extends ChatMessageImpl implements ReceivedMessage {
     public ReceivedMessageImpl(Chat chat, ParticipantImpl user, String id, String clientId, long time, Message message, SkypeImpl skype) {

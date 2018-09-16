@@ -19,6 +19,7 @@ package com.samczsun.skype4j.internal.threads;
 import com.samczsun.skype4j.exceptions.handler.ErrorSource;
 import com.samczsun.skype4j.internal.SkypeImpl;
 
+import java.time.Duration;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -37,13 +38,14 @@ public class AuthenticationChecker extends Thread {
 
     public void run() {
         while (skype.isLoggedIn() && !stop.get()) {
-            long diff = (skype.getExpirationTime() - System.currentTimeMillis());
-            if (diff > 1800000) { //30 min
+
+            boolean tokensStillValid = skype.isAuthenticated() && skype.isRegistrationTokenValid();
+            if (tokensStillValid) {
                 if (stop.get()) {
                     return;
                 }
                 try {
-                    Thread.sleep(diff / 2);
+                    Thread.sleep(Duration.ofMinutes(10).toMillis());
                 } catch (InterruptedException ignored) {
                 }
             } else {
@@ -51,18 +53,17 @@ public class AuthenticationChecker extends Thread {
                     return;
                 }
                 try {
-                    skype.reauthenticate();
+                    skype.reAuthenticate();
                 } catch (Exception e) {
                     skype.handleError(ErrorSource.REAUTHENTICATING, e, true);
-                    //Don't see why you need to return in a finally block.
-                } finally {
-                    return;
                 }
+                return;
             }
         }
     }
 
     public void kill() {
         this.stop.set(true);
+        System.out.println("AuthenticationCheckerThread is shutting down");
     }
 }

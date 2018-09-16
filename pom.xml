@@ -1,8 +1,10 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<!--suppress MavenModelInspection -->
+<project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://maven.apache.org/POM/4.0.0"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.samczsun</groupId>
     <artifactId>skype4j</artifactId>
-    <version>0.2.0-SNAPSHOT</version>
+    <version>0.2.11-ARGUS-SNAPSHOT</version>
     <name>Skype4J</name>
     <description>A Skype API written in Java. P2P chats are not supported</description>
     <url>https://github.com/samczsun/Skype4J</url>
@@ -10,6 +12,10 @@
         <developer>
             <name>Sam Sun</name>
             <email>github@samczsun.com</email>
+        </developer>
+        <developer>
+            <name>Alexey Semennikov</name>
+            <email>a.semennikov@argustelecom.ru</email>
         </developer>
     </developers>
     <licenses>
@@ -23,20 +29,18 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
     <scm>
-        <url>git@github.com:samczsun/Skype4J.git</url>
-        <connection>scm:git:git@github.com:samczsun/Skype4J.git</connection>
-        <developerConnection>scm:git:git@github.com:samczsun/Skype4J.git</developerConnection>
-      <tag>HEAD</tag>
-  </scm>
+        <url>https://github.com/alsem/Skype4J.git</url>
+        <connection>scm:git:git@github.com:alsem/Skype4J.git</connection>
+        <developerConnection>scm:git:git@github.com:alsem/Skype4J.git</developerConnection>
+        <tag>HEAD</tag>
+    </scm>
     <distributionManagement>
         <snapshotRepository>
-            <id>ossrh</id>
-            <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+            <id>artifactory</id>
+            <name>artifactory-snapshots</name>
+            <url>http://git:8081/artifactory/ext-snapshot-local</url>
         </snapshotRepository>
-        <repository>
-            <id>ossrh</id>
-            <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
-        </repository>
+
     </distributionManagement>
     <build>
         <sourceDirectory>src/main/java</sourceDirectory>
@@ -46,6 +50,7 @@
                 <directory>src/main/resources/</directory>
             </resource>
         </resources>
+
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -68,6 +73,21 @@
                         </goals>
                     </execution>
                 </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>build-helper-maven-plugin</artifactId>
+                <version>3.0.0</version>
+            </plugin>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>versions-maven-plugin</artifactId>
+                <version>2.4</version>
+                <configuration>
+                    <newVersion>
+                        ${parsedVersion.majorVersion}.${parsedVersion.minorVersion}.${parsedVersion.nextIncrementalVersion}-${parsedVersion.qualifier}
+                    </newVersion>
+                </configuration>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -111,23 +131,16 @@
                     </execution>
                 </executions>
             </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-gpg-plugin</artifactId>
-                <version>1.6</version>
-                <executions>
-                    <execution>
-                        <id>sign-artifacts</id>
-                        <phase>verify</phase>
-                        <goals>
-                            <goal>sign</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
         </plugins>
+
     </build>
     <dependencies>
+        <!-- https://mvnrepository.com/artifact/log4j/log4j -->
+        <dependency>
+            <groupId>log4j</groupId>
+            <artifactId>log4j</artifactId>
+            <version>1.2.14</version>
+        </dependency>
         <dependency>
             <!-- For parsing Skype responses and HTML nodes -->
             <groupId>org.jsoup</groupId>
@@ -152,6 +165,29 @@
             <artifactId>Java-WebSocket</artifactId>
             <version>1.3.0</version>
         </dependency>
+        <!--MS live -->
+        <dependency>
+            <groupId>com.squareup.okhttp3</groupId>
+            <artifactId>okhttp</artifactId>
+            <version>3.8.1</version>
+        </dependency>
+        <dependency>
+            <groupId>com.squareup.okio</groupId>
+            <artifactId>okio</artifactId>
+            <version>1.13.0</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-lang3</artifactId>
+            <version>3.5</version>
+        </dependency>
+        <dependency>
+            <groupId>org.json</groupId>
+            <artifactId>json</artifactId>
+            <version>20160810</version>
+        </dependency>
+
         <dependency>
             <groupId>org.mockito</groupId>
             <artifactId>mockito-all</artifactId>

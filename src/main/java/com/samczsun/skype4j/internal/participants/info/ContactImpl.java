@@ -29,6 +29,7 @@ import com.samczsun.skype4j.internal.Utils;
 import com.samczsun.skype4j.internal.client.FullClient;
 import com.samczsun.skype4j.internal.utils.Encoder;
 import com.samczsun.skype4j.participants.info.Contact;
+import org.apache.commons.lang3.StringUtils;
 import org.jsoup.helper.Validate;
 
 import java.awt.*;
@@ -38,6 +39,43 @@ import java.util.regex.Pattern;
 
 public class ContactImpl implements Contact {
     private static final Pattern PHONE_NUMBER = Pattern.compile("\\+[0-9]+");
+    private SkypeImpl skype;
+    private String username;
+    private String displayName;
+    private String firstName;
+    private String lastName;
+    private String birthday;
+    private String gender;
+    private String language;
+    private String avatarURL;
+    private BufferedImage avatar;
+    private String mood;
+    private String richMood;
+    private String country;
+    private String city;
+    private boolean isPhone;
+    private boolean isAuthorized;
+    private boolean isBlocked;
+    // What is this?
+    private String authCertificate;
+    private UUID personId;
+    private String type;
+
+    public ContactImpl(SkypeImpl skype, String username, JsonObject unaddedData) throws ConnectionException {
+        this.skype = skype;
+        this.username = username;
+        if (!PHONE_NUMBER.matcher(username).matches()) {
+            updateProfile(unaddedData);
+            updateContactInfo();
+        } else {
+            this.isPhone = true;
+        }
+    }
+    public ContactImpl(SkypeImpl skype, JsonObject contact) throws ConnectionException {
+        this.skype = skype;
+        update(contact);
+        updateProfile(getObject(skype, getUsername()));
+    }
 
     public static Contact createContact(SkypeImpl skype, String username) throws ConnectionException {
         Validate.notEmpty(username, "Username must not be empty");
@@ -60,47 +98,6 @@ public class ContactImpl implements Contact {
                         )
                 );
         return array.get(0).asObject();
-    }
-
-    private SkypeImpl skype;
-    private String username;
-    private String displayName;
-    private String firstName;
-    private String lastName;
-    private String birthday;
-    private String gender;
-    private String language;
-    private String avatarURL;
-    private BufferedImage avatar;
-    private String mood;
-    private String richMood;
-    private String country;
-    private String city;
-    private boolean isPhone;
-
-    private boolean isAuthorized;
-    private boolean isBlocked;
-
-    // What is this?
-    private String authCertificate;
-    private UUID personId;
-    private String type;
-
-    public ContactImpl(SkypeImpl skype, String username, JsonObject unaddedData) throws ConnectionException {
-        this.skype = skype;
-        this.username = username;
-        if (!PHONE_NUMBER.matcher(username).matches()) {
-            updateProfile(unaddedData);
-            updateContactInfo();
-        } else {
-            this.isPhone = true;
-        }
-    }
-
-    public ContactImpl(SkypeImpl skype, JsonObject contact) throws ConnectionException {
-        this.skype = skype;
-        update(contact);
-        updateProfile(getObject(skype, getUsername()));
     }
 
     private void updateContactInfo() throws ConnectionException {
@@ -193,36 +190,40 @@ public class ContactImpl implements Contact {
 
     @Override
     public void authorize() throws ConnectionException {
-        Endpoints.AUTHORIZE_CONTACT.open(skype, this.username).expect(200, "While authorizing contact").put();
+        Endpoints.AUTHORIZE_CONTACT_SELF.open(skype, StringUtils.prependIfMissing(this.username, "8:"))
+                .header("BehaviorOverride", "redirectAs404")
+                .expect(c -> c == 200 || c == 404, "While adding to contact list").put();
         updateContactInfo();
     }
 
     @Override
     public void unauthorize() throws ConnectionException {
-        if (isAuthorized) {
-            Endpoints.UNAUTHORIZE_CONTACT_SELF
-                    .open(skype, this.username)
-                    .expect(200, "While unauthorizing contact")
-                    .put();
-        } else {
-            Endpoints.DECLINE_CONTACT_REQUEST
-                    .open(skype, this.username)
-                    .expect(201, "While unauthorizing contact")
-                    .put();
-        }
+
+        Endpoints.UNAUTHORIZE_CONTACT
+                .open(skype, skype.getUsername(), this.username)
+                .expect(200, "While anauthorizing contact")
+                .delete();
+        Endpoints.UNAUTHORIZE_CONTACT_SELF
+                .open(skype, this.username)
+                .expect(200, "While unauthorizing contact")
+                .delete();
         updateContactInfo();
     }
 
     @Override
-    public void sendRequest(String message) throws ConnectionException, NoSuchContactException {
-        Endpoints.AUTHORIZATION_REQUEST
-                .open(skype, this.username)
+    public void sendRequest(String message) throws ConnectionException {
+        JsonObject requestObject = new JsonObject();
+        requestObject
+                .add("mri", "8:" + this.username)
+                .add("greeting", Encoder.encode(message));
+        Endpoints.SEND_CONTACT_REQUEST
+                .open(skype, skype.getUsername())
                 .on(404, (connection) -> {
                     throw new NoSuchContactException();
                 })
                 .expect(201, "While sending request")
                 .expect(200, "While sending request")
-                .put("greeting=" + Encoder.encode(message));
+                .put(requestObject);
         updateContactInfo();
     }
 

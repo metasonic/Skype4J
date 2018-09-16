@@ -16,8 +16,6 @@
 
 package com.samczsun.skype4j.events.chat.participant.action;
 
-import com.samczsun.skype4j.chat.Chat;
-import com.samczsun.skype4j.events.chat.ChatEvent;
 import com.samczsun.skype4j.events.chat.participant.ParticipantEvent;
 import com.samczsun.skype4j.participants.Participant;
 

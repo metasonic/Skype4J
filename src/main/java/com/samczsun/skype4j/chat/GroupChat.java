@@ -60,7 +60,7 @@ public interface GroupChat extends Chat {
      * @param image     The image to upload
      * @param imageType The type of image (png, jpg, etc)
      * @throws ConnectionException If an error occurs while connecting to the endpoint
-     * @throws IOException If an error occurs while converting the image to bytes
+     * @throws IOException         If an error occurs while converting the image to bytes
      */
     void setImage(BufferedImage image, String imageType) throws ConnectionException, IOException;
 
@@ -69,9 +69,9 @@ public interface GroupChat extends Chat {
      * WARNING: This endpoint is not officially supported by Skype.
      * As such, it may or may not be functional in the future
      *
-     * @param file     The image to upload
+     * @param file The image to upload
      * @throws ConnectionException If an error occurs while connecting to the endpoint
-     * @throws IOException If an error occurs while converting the image to bytes
+     * @throws IOException         If an error occurs while converting the image to bytes
      */
     void setImage(File file) throws ConnectionException, IOException;
 

@@ -20,7 +20,6 @@ import com.samczsun.skype4j.Skype;
 import com.samczsun.skype4j.chat.Chat;
 import com.samczsun.skype4j.formatting.Message;
 import com.samczsun.skype4j.participants.Participant;
-import com.samczsun.skype4j.participants.User;
 
 /**
  * Represents a single message

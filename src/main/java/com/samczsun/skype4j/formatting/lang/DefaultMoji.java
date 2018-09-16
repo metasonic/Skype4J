@@ -25,6 +25,14 @@ public enum DefaultMoji implements IMoji {
 
     ;
 
+    private static final Map<String, IMoji> fliks = new HashMap<>();
+
+    static {
+        for (IMoji flik : values()) {
+            fliks.put(flik.getId(), flik);
+        }
+    }
+
     private String id;
     private String etag;
     private String desc;
@@ -33,6 +41,10 @@ public enum DefaultMoji implements IMoji {
         this.id = id;
         this.etag = etag;
         this.desc = desc;
+    }
+
+    public static IMoji getById(String id) {
+        return fliks.get(id);
     }
 
     public String getId() {
@@ -45,17 +57,5 @@ public enum DefaultMoji implements IMoji {
 
     public String getDescription() {
         return this.desc;
-    }
-
-    private static final Map<String, IMoji> fliks = new HashMap<>();
-
-    static {
-        for (IMoji flik : values()) {
-            fliks.put(flik.getId(), flik);
-        }
-    }
-
-    public static IMoji getById(String id) {
-        return fliks.get(id);
     }
 }

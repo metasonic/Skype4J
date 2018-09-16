@@ -20,7 +20,6 @@ import com.samczsun.skype4j.chat.Chat;
 import com.samczsun.skype4j.events.chat.ChatEvent;
 import com.samczsun.skype4j.participants.Participant;
 import com.samczsun.skype4j.participants.info.Contact;
-import com.samczsun.skype4j.participants.User;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -36,13 +35,11 @@ public class ContactReceivedEvent extends ChatEvent {
         this.sentContacts = new ArrayList<>(sent);
     }
 
-    public Participant getSender()
-    {
+    public Participant getSender() {
         return this.sender;
     }
 
-    public List<Contact> getSentContacts()
-    {
+    public List<Contact> getSentContacts() {
         return Collections.unmodifiableList(sentContacts);
     }
 }

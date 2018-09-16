@@ -20,7 +20,6 @@ import com.samczsun.skype4j.chat.Chat;
 import com.samczsun.skype4j.chat.objects.ReceivedFile;
 import com.samczsun.skype4j.events.chat.ChatEvent;
 import com.samczsun.skype4j.participants.Participant;
-import com.samczsun.skype4j.participants.User;
 
 import java.util.ArrayList;
 import java.util.List;

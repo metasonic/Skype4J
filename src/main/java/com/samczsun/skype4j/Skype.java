@@ -32,7 +32,7 @@ import java.util.logging.Logger;
  * This class represents a single Skype account, which may or may not have been logged in
  */
 public interface Skype {
-    String VERSION = "908/1.52.0.82//skype.com";
+    String VERSION = "908/1.117.0.21//skype.com";
 
     RuntimeException UNEXPECTED = new RuntimeException("Please open a GitHub issue with this stacktrace, something unexpected happened");
 
@@ -40,7 +40,7 @@ public interface Skype {
      * Log into Skype. This will perform the following actions:
      * 1) Log into Skype to get a SkypeToken
      * 2) Register an endpoint to get a RegistrationToken
-     *
+     * <p>
      * Note that the SkypeToken technically expires after 24 hours. The vanilla implementation in Skype for Web
      * is to redirect you to the login screen. As such, roughly half an hour before 24 hours is hit, the API
      * will attempt to re-login and, if subscribed, resubscribe.
@@ -49,7 +49,8 @@ public interface Skype {
      * @throws ConnectionException         If a network error occured while connecting
      * @throws NotParticipatingException   If the guest account cannot log in due to the chat not being open
      */
-    void login() throws InvalidCredentialsException, ConnectionException, NotParticipatingException;
+    void login() throws InvalidCredentialsException, ConnectionException, NotParticipatingException,
+            SkypeAuthenticationException;
 
     /**
      * Subscribe to the HTTP long polling service.

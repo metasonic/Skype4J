@@ -16,22 +16,16 @@
 
 package com.samczsun.skype4j.exceptions;
 
-import com.samczsun.skype4j.internal.ExceptionHandler;
 import com.samczsun.skype4j.internal.Utils;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.PrintWriter;
-import java.io.StringWriter;
+import java.io.*;
 import java.net.HttpURLConnection;
-import java.nio.charset.StandardCharsets;
 
 /**
  * Thrown when an exception occurs while connecting to an endpoint
  */
 public class ConnectionException extends SkypeException {
+    private static final long serialVersionUID = 6479923597926811460L;
     private int responseCode;
     private String responseMessage;
     private String message;

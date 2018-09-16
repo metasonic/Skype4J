@@ -24,11 +24,11 @@ public class FormattingTest {
                 .with(Text.rich("Underline").withUnderline())
                 .with(Text.rich("Black").withColor(Color.BLACK).withSize(10));
         String html = "Plain<b>Bold<i>Italic</i></b>" + Text.NEW_LINE +
-                      "<a href=\"http://google.com\">google</a>" +
-                      "<s>Strikethrough</s>" +
-                      "<blink>Blink</blink>" +
-                      "<u>Underline</u>" +
-                      "<font size=\"10\" color=\"#000000\">Black</font>";
+                "<a href=\"http://google.com\">google</a>" +
+                "<s>Strikethrough</s>" +
+                "<blink>Blink</blink>" +
+                "<u>Underline</u>" +
+                "<font size=\"10\" color=\"#000000\">Black</font>";
         Assert.assertEquals(message, Message.fromHtml(html));
     }
 
@@ -62,13 +62,13 @@ public class FormattingTest {
                 .with(Text.rich("Black").withColor(Color.BLACK).withSize(10));
 
         String html = "Plain" +
-                      "<b>Bold<i>Italic</i></b>" +
-                      Text.NEW_LINE +
-                      "<a href=\"http://google.com\">google</a>" +
-                      "<s>Strikethrough</s>" +
-                      "<blink>Blink</blink>" +
-                      "<u>Underline</u>" +
-                      "<font size=\"10\" color=\"#000000\">Black</font>";
+                "<b>Bold<i>Italic</i></b>" +
+                Text.NEW_LINE +
+                "<a href=\"http://google.com\">google</a>" +
+                "<s>Strikethrough</s>" +
+                "<blink>Blink</blink>" +
+                "<u>Underline</u>" +
+                "<font size=\"10\" color=\"#000000\">Black</font>";
         Assert.assertEquals(html, message.write());
     }
 }

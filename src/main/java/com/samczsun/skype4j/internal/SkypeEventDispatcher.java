@@ -28,13 +28,12 @@ import java.util.*;
 import java.util.logging.Level;
 
 public class SkypeEventDispatcher implements EventDispatcher {
+    private final Map<Class<?>, List<RegisteredListener>> listeners = Collections.synchronizedMap(new HashMap<>());
     private Skype instance;
 
     public SkypeEventDispatcher(Skype instance) {
         this.instance = instance;
     }
-
-    private final Map<Class<?>, List<RegisteredListener>> listeners = Collections.synchronizedMap(new HashMap<>());
 
     public void registerListener(Listener l) {
         Class<?> c = l.getClass();

@@ -17,7 +17,6 @@
 package com.samczsun.skype4j.chat;
 
 import com.samczsun.skype4j.participants.Participant;
-import com.samczsun.skype4j.participants.User;
 
 /**
  * Represents a private conversation between the user logged in and one other

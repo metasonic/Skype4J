@@ -23,8 +23,8 @@ import com.samczsun.skype4j.exceptions.handler.ErrorHandler;
 import com.samczsun.skype4j.formatting.IMoji;
 import com.samczsun.skype4j.formatting.Message;
 import com.samczsun.skype4j.participants.Participant;
-import com.samczsun.skype4j.participants.info.Contact;
 import com.samczsun.skype4j.participants.User;
+import com.samczsun.skype4j.participants.info.Contact;
 
 import java.awt.image.BufferedImage;
 import java.io.File;
@@ -69,7 +69,7 @@ public interface Chat {
      * @param imageType The type of image (jpg, png, etc)
      * @param imageName The name of the image
      * @throws ConnectionException If an error occurs while connecting to the endpoint
-     * @throws IOException If an error occurs while reading the image file
+     * @throws IOException         If an error occurs while reading the image file
      */
     void sendImage(BufferedImage image, String imageType, String imageName) throws ConnectionException, IOException;
 
@@ -78,7 +78,7 @@ public interface Chat {
      *
      * @param image The file containing the image
      * @throws ConnectionException If an error occurs while connecting to the endpoint
-     * @throws IOException If an error occurs while reading the image file
+     * @throws IOException         If an error occurs while reading the image file
      */
     void sendImage(File image) throws ConnectionException, IOException;
 
@@ -100,7 +100,7 @@ public interface Chat {
 
     /**
      * Get a participant based on their id. The ID is in the format of {number}:{string}
-     *
+     * <p>
      * For example, a user has id 8:{username} while a bot has id 28:{uuid}
      *
      * @param id The id of the participant

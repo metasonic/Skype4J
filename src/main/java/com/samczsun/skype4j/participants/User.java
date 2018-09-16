@@ -16,13 +16,11 @@
 
 package com.samczsun.skype4j.participants;
 
-import com.samczsun.skype4j.exceptions.ConnectionException;
-import com.samczsun.skype4j.exceptions.NoPermissionException;
 import com.samczsun.skype4j.participants.info.Contact;
 
 /**
  * Represents a user in a chat.
- *
+ * <p>
  * Multiple user instances may exist for a single contact
  */
 public interface User extends Participant {

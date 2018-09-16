@@ -17,11 +17,9 @@
 package com.samczsun.skype4j.internal;
 
 import com.samczsun.skype4j.chat.Chat;
-import com.samczsun.skype4j.chat.messages.ChatMessage;
 import com.samczsun.skype4j.exceptions.ChatNotFoundException;
 import com.samczsun.skype4j.exceptions.ConnectionException;
 import com.samczsun.skype4j.formatting.Message;
-import com.samczsun.skype4j.internal.SkypeImpl;
 import com.samczsun.skype4j.internal.chat.*;
 import com.samczsun.skype4j.internal.chat.messages.ChatMessageImpl;
 import com.samczsun.skype4j.internal.chat.messages.ReceivedMessageImpl;
@@ -29,7 +27,6 @@ import com.samczsun.skype4j.internal.chat.messages.SentMessageImpl;
 import com.samczsun.skype4j.internal.participants.BotImpl;
 import com.samczsun.skype4j.internal.participants.ParticipantImpl;
 import com.samczsun.skype4j.internal.participants.UserImpl;
-import com.samczsun.skype4j.participants.Participant;
 import org.jsoup.helper.Validate;
 
 public class Factory {
@@ -80,7 +77,7 @@ public class Factory {
         throw new IllegalArgumentException(String.format("Unknown participant type with id %s", id));
     }
 
-    public static ChatMessageImpl createMessage(Chat chat, ParticipantImpl user, String id, String clientId, long time, Message message, SkypeImpl skype) throws ConnectionException {
+    public static ChatMessageImpl createMessage(Chat chat, ParticipantImpl user, String id, String clientId, long time, Message message, SkypeImpl skype) {
         Validate.notNull(chat, "Chat must not be null");
         Validate.isTrue(chat instanceof ChatImpl, "Chat must be instanceof ChatImpl");
         Validate.notNull(user, "User must not be null");

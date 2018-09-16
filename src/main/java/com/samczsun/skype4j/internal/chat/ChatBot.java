@@ -20,13 +20,10 @@ import com.samczsun.skype4j.chat.BotChat;
 import com.samczsun.skype4j.exceptions.ChatNotFoundException;
 import com.samczsun.skype4j.exceptions.ConnectionException;
 import com.samczsun.skype4j.internal.Factory;
-import com.samczsun.skype4j.internal.participants.BotImpl;
 import com.samczsun.skype4j.internal.SkypeImpl;
+import com.samczsun.skype4j.internal.participants.BotImpl;
 import com.samczsun.skype4j.internal.participants.UserImpl;
 import com.samczsun.skype4j.participants.Bot;
-
-import java.util.HashMap;
-import java.util.Map;
 
 public class ChatBot extends ChatImpl implements BotChat {
     private BotImpl bot;
@@ -36,7 +33,7 @@ public class ChatBot extends ChatImpl implements BotChat {
     }
 
     @Override
-    public void addUser(String username) throws ConnectionException {
+    public void addUser(String username) {
         throw new IllegalArgumentException("Cannot remove user from bot chat");
     }
 

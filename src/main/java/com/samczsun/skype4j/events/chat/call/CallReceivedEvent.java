@@ -19,7 +19,6 @@ package com.samczsun.skype4j.events.chat.call;
 import com.samczsun.skype4j.chat.Chat;
 import com.samczsun.skype4j.events.chat.ChatEvent;
 import com.samczsun.skype4j.participants.Participant;
-import com.samczsun.skype4j.participants.User;
 
 public class CallReceivedEvent extends ChatEvent {
     private final Participant sender;

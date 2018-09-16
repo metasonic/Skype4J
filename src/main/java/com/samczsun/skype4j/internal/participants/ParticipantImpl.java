@@ -31,15 +31,12 @@ import java.util.*;
 
 public abstract class ParticipantImpl implements Participant {
 
-    private SkypeImpl skype;
-    private String id;
-
-    private ChatImpl chat;
-
-    private Participant.Role role = Participant.Role.USER;
-
     private final List<ChatMessage> messages = Collections.synchronizedList(new ArrayList<>());
     private final Map<String, ChatMessage> messageMap = Collections.synchronizedMap(new HashMap<>());
+    private SkypeImpl skype;
+    private String id;
+    private ChatImpl chat;
+    private Participant.Role role = Participant.Role.USER;
 
     public ParticipantImpl(SkypeImpl skype, ChatImpl chat, String id) {
         this.skype = skype;

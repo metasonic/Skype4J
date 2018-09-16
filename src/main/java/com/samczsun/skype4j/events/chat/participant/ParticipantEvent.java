@@ -18,7 +18,6 @@ package com.samczsun.skype4j.events.chat.participant;
 
 import com.samczsun.skype4j.events.chat.ChatEvent;
 import com.samczsun.skype4j.participants.Participant;
-import com.samczsun.skype4j.participants.User;
 
 public abstract class ParticipantEvent extends ChatEvent {
     private final Participant user;

@@ -43,7 +43,7 @@ public enum EventType {
     },
     ENDPOINT_PRESENCE("EndpointPresence") {
         @Override
-        public void handle(SkypeImpl skype, JsonObject eventObj) throws SkypeException {
+        public void handle(SkypeImpl skype, JsonObject eventObj) {
             try {
                 JsonObject resource = eventObj.get("resource").asObject();
 
@@ -80,19 +80,19 @@ public enum EventType {
     },
     USER_PRESENCE("UserPresence") {
         @Override
-        public void handle(SkypeImpl skype, JsonObject resource) throws SkypeException {
+        public void handle(SkypeImpl skype, JsonObject resource) {
 
         }
     },
     CONVERSATION_UPDATE("ConversationUpdate") {
         @Override
-        public void handle(SkypeImpl skype, JsonObject resource) throws SkypeException {
+        public void handle(SkypeImpl skype, JsonObject resource) {
 
         }
     },
     THREAD_UPDATE("ThreadUpdate") {
         @Override
-        public void handle(SkypeImpl skype, JsonObject resource) throws SkypeException {
+        public void handle(SkypeImpl skype, JsonObject resource) {
             // User add and leave here 25898
         }
     };
@@ -101,21 +101,6 @@ public enum EventType {
 
 
     private static final Map<String, EventType> byValue = new HashMap<>();
-    private final String value;
-
-    EventType(String value) {
-        this.value = value;
-    }
-
-    public String getValue() {
-        return this.value;
-    }
-
-    public static EventType getByName(String eventType) {
-        return byValue.get(eventType);
-    }
-
-    public abstract void handle(SkypeImpl skype, JsonObject resource) throws SkypeException, IOException;
 
     static {
         for (EventType type : values()) {
@@ -123,7 +108,23 @@ public enum EventType {
         }
     }
 
+    private final String value;
+
+    EventType(String value) {
+        this.value = value;
+    }
+
+    public static EventType getByName(String eventType) {
+        return byValue.get(eventType);
+    }
+
     private static IllegalArgumentException conformError(String object) {
         return new IllegalArgumentException(String.format("%s did not conform to format expected", object));
     }
+
+    public String getValue() {
+        return this.value;
+    }
+
+    public abstract void handle(SkypeImpl skype, JsonObject resource) throws SkypeException, IOException;
 }

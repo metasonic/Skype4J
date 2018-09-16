@@ -125,8 +125,9 @@ public interface Contact {
 
     /**
      * Send a authorization request to this user
+     *
      * @param message The message to attach
-     * @throws ConnectionException If an error occurs while sending the request
+     * @throws ConnectionException    If an error occurs while sending the request
      * @throws NoSuchContactException If the user does not exist
      */
     void sendRequest(String message) throws ConnectionException, NoSuchContactException;
@@ -162,8 +163,9 @@ public interface Contact {
 
     /**
      * Get the private conversation between you and this user
+     *
      * @return The private conversation
-     * @throws ConnectionException If an error occurs while connecting to the endpoint
+     * @throws ConnectionException   If an error occurs while connecting to the endpoint
      * @throws ChatNotFoundException If the contact does not exist or is a phone
      */
     Chat getPrivateConversation() throws ConnectionException, ChatNotFoundException;

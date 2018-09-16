@@ -21,12 +21,8 @@ import com.samczsun.skype4j.exceptions.ChatNotFoundException;
 import com.samczsun.skype4j.exceptions.ConnectionException;
 import com.samczsun.skype4j.internal.Factory;
 import com.samczsun.skype4j.internal.SkypeImpl;
-import com.samczsun.skype4j.internal.participants.BotImpl;
 import com.samczsun.skype4j.internal.participants.UserImpl;
 import com.samczsun.skype4j.participants.User;
-
-import java.util.HashMap;
-import java.util.Map;
 
 public class ChatIndividual extends ChatImpl implements IndividualChat {
     private User partner;

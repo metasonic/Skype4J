@@ -237,6 +237,8 @@ public enum Emoticon implements IEmoticon {
     HEADPHONES("headphones", "3a62dadc-1e79-42f1-9dc5-96c8c159dad2", "Listening to headphones", "(headphones)", "(Headphones)"),
     SHIVERING("shivering", "176ee7a9-094d-43d4-87a2-2193796691ac", "Cold shivering", "(shivering)", "(Shivering)", "(cold)", "(Cold)", "(freezing)", "(Freezing)");
 
+    private static Map<String, Emoticon> dictionary;
+    private static int longestEmoji = -1;
     private final String id;
     private final String etag;
     private final String desc;
@@ -248,25 +250,6 @@ public enum Emoticon implements IEmoticon {
         this.desc = desc;
         this.shortcuts = Arrays.asList(shortcuts);
     }
-
-    public String getId() {
-        return this.id;
-    }
-
-    public List<String> getShortcuts() {
-        return Collections.unmodifiableList(this.shortcuts);
-    }
-
-    public String getEtag() {
-        return this.etag;
-    }
-
-    public String getDescription() {
-        return this.desc;
-    }
-
-    private static Map<String, Emoticon> dictionary;
-    private static int longestEmoji = -1;
 
     public static Map<String, Emoticon> getDictionary() {
         if (dictionary == null) { // This is for performance, trust me
@@ -298,5 +281,21 @@ public enum Emoticon implements IEmoticon {
                 });
             }
         }
+    }
+
+    public String getId() {
+        return this.id;
+    }
+
+    public List<String> getShortcuts() {
+        return Collections.unmodifiableList(this.shortcuts);
+    }
+
+    public String getEtag() {
+        return this.etag;
+    }
+
+    public String getDescription() {
+        return this.desc;
     }
 }

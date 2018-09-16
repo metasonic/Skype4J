@@ -34,40 +34,6 @@ import java.util.function.Consumer;
  */
 public class RichText extends Text {
 
-    public enum Format {
-        BOLD("b", RichText::withBold),
-        ITALIC("i", RichText::withItalic),
-        UNDERLINE("u", RichText::withUnderline),
-        STRIKE_THROUGH("s", RichText::withStrikethrough),
-        CODE("pre", RichText::withCode),
-        BLINK("blink", RichText::withBlink);
-
-        private final String tagName;
-
-        private final Consumer<RichText> apply;
-
-        Format(String tagName, Consumer<RichText> apply) {
-            this.tagName = tagName;
-            this.apply = apply;
-        }
-
-        public String getTagName() {
-            return this.tagName;
-        }
-
-        public Consumer<RichText> getApplicator() {
-            return this.apply;
-        }
-
-        public String getOpenTag() {
-            return "<" + this.tagName + ">";
-        }
-
-        public String getCloseTag() {
-            return "</" + this.tagName + ">";
-        }
-    }
-
     private static final Map<String, BiConsumer<RichText, Element>> TAG_APPLIER = Collections.unmodifiableMap(
             new HashMap<String, BiConsumer<RichText, Element>>() {{
                 Arrays.stream(Format.values()).forEach(format -> put(format.getTagName(), (text, elem) -> format.getApplicator().accept(text)));
@@ -85,7 +51,6 @@ public class RichText extends Text {
                 });
             }}
     );
-
     private static final Map<String, BiPredicate<RichText, Element>> TAG_TEST = Collections.unmodifiableMap(
             new HashMap<String, BiPredicate<RichText, Element>>() {{
                 Arrays.stream(Format.values()).forEach(format -> put(format.getTagName(), (text, elem) -> text.hasFormat(format)));
@@ -117,19 +82,12 @@ public class RichText extends Text {
                 });
             }}
     );
-
     private final Set<Format> formats = EnumSet.noneOf(RichText.Format.class);
-
     private String link = null;
-
     private String color = null;
-
     private int size = -1;
-
     private RichText next;
-
     private RichText previous;
-
     private String text;
 
     RichText(String text) {
@@ -139,6 +97,66 @@ public class RichText extends Text {
     RichText(RichText previous, String text) {
         this.previous = previous;
         this.text = text;
+    }
+
+    public static RichText fromHtml(String html) {
+        Document doc = Jsoup.parse(html);
+        doc.outputSettings().prettyPrint(false);
+        RichText root = new RichText("");
+        parse(root, doc.getElementsByTag("body").get(0));
+        return root;
+    }
+
+    private static RichText parse(RichText root, Node node) {
+        RichText current = root;
+        if (node instanceof Element) {
+            Element elem = (Element) node;
+            applyTag(current, elem);
+            String inner = elem.html();
+            Elements children = elem.children();
+            if (children.size() > 0) {
+                String[] parts = new String[children.size() + 1];
+                int i = 0;
+                int index = 0;
+                for (Element child : children) {
+                    int startChild = inner.indexOf("<" + child.tag().toString(), index);
+                    int endChild = startChild + child.outerHtml().length();
+                    parts[i++] = inner.substring(index, startChild);
+                    index = endChild;
+                }
+                parts[i] = inner.substring(index);
+                Element last = elem;
+                for (int j = 0; j < parts.length; j++) {
+                    if (hasTag(root, last)) {
+                        current.appendText(parts[j]);
+                    } else {
+                        current = current.append(parts[j], true);
+                        current.copyFormat(root);
+                    }
+                    if (j < children.size()) {
+                        Element child = children.get(j);
+                        if (!hasTag(current, child)) {
+                            current = current.append("", true);
+                            current.copyFormat(root);
+                        }
+                        current = parse(current, child);
+                        last = child;
+                    }
+                }
+            } else {
+                current.appendText(inner);
+            }
+        }
+        return current;
+    }
+
+    private static void applyTag(RichText text, Element tag) {
+        RichText.TAG_APPLIER.getOrDefault(tag.tagName(), (t, elem) -> {
+        }).accept(text, tag);
+    }
+
+    private static boolean hasTag(RichText text, Element tag) {
+        return RichText.TAG_TEST.getOrDefault(tag.tagName(), (t, elem) -> true).test(text, tag);
     }
 
     public String getText() {
@@ -251,7 +269,6 @@ public class RichText extends Text {
     public boolean hasFormat(Format format) {
         return this.formats.contains(format);
     }
-
 
     public RichText append(String text) {
         return append(text, false);
@@ -378,63 +395,37 @@ public class RichText extends Text {
         return result;
     }
 
-    public static RichText fromHtml(String html) {
-        Document doc = Jsoup.parse(html);
-        doc.outputSettings().prettyPrint(false);
-        RichText root = new RichText("");
-        parse(root, doc.getElementsByTag("body").get(0));
-        return root;
-    }
+    public enum Format {
+        BOLD("b", RichText::withBold),
+        ITALIC("i", RichText::withItalic),
+        UNDERLINE("u", RichText::withUnderline),
+        STRIKE_THROUGH("s", RichText::withStrikethrough),
+        CODE("pre", RichText::withCode),
+        BLINK("blink", RichText::withBlink);
 
-    private static RichText parse(RichText root, Node node) {
-        RichText current = root;
-        if (node instanceof Element) {
-            Element elem = (Element) node;
-            applyTag(current, elem);
-            String inner = elem.html();
-            Elements children = elem.children();
-            if (children.size() > 0) {
-                String[] parts = new String[children.size() + 1];
-                int i = 0;
-                int index = 0;
-                for (Element child : children) {
-                    int startChild = inner.indexOf("<" + child.tag().toString(), index);
-                    int endChild = startChild + child.outerHtml().length();
-                    parts[i++] = inner.substring(index, startChild);
-                    index = endChild;
-                }
-                parts[i] = inner.substring(index);
-                Element last = elem;
-                for (int j = 0; j < parts.length; j++) {
-                    if (hasTag(root, last)) {
-                        current.appendText(parts[j]);
-                    } else {
-                        current = current.append(parts[j], true);
-                        current.copyFormat(root);
-                    }
-                    if (j < children.size()) {
-                        Element child = children.get(j);
-                        if (!hasTag(current, child)) {
-                            current = current.append("", true);
-                            current.copyFormat(root);
-                        }
-                        current = parse(current, child);
-                        last = child;
-                    }
-                }
-            } else {
-                current.appendText(inner);
-            }
+        private final String tagName;
+
+        private final Consumer<RichText> apply;
+
+        Format(String tagName, Consumer<RichText> apply) {
+            this.tagName = tagName;
+            this.apply = apply;
         }
-        return current;
-    }
 
-    private static void applyTag(RichText text, Element tag) {
-        RichText.TAG_APPLIER.getOrDefault(tag.tagName(), (t, elem) -> {
-        }).accept(text, tag);
-    }
+        public String getTagName() {
+            return this.tagName;
+        }
 
-    private static boolean hasTag(RichText text, Element tag) {
-        return RichText.TAG_TEST.getOrDefault(tag.tagName(), (t, elem) -> true).test(text, tag);
+        public Consumer<RichText> getApplicator() {
+            return this.apply;
+        }
+
+        public String getOpenTag() {
+            return "<" + this.tagName + ">";
+        }
+
+        public String getCloseTag() {
+            return "</" + this.tagName + ">";
+        }
     }
 }

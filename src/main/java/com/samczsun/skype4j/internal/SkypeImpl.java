@@ -24,13 +24,17 @@ import com.samczsun.skype4j.Visibility;
 import com.samczsun.skype4j.chat.Chat;
 import com.samczsun.skype4j.chat.GroupChat;
 import com.samczsun.skype4j.events.EventDispatcher;
-import com.samczsun.skype4j.exceptions.*;
+import com.samczsun.skype4j.exceptions.ChatNotFoundException;
+import com.samczsun.skype4j.exceptions.ConnectionException;
+import com.samczsun.skype4j.exceptions.NoPermissionException;
+import com.samczsun.skype4j.exceptions.SkypeAuthenticationException;
 import com.samczsun.skype4j.exceptions.handler.ErrorHandler;
 import com.samczsun.skype4j.exceptions.handler.ErrorSource;
 import com.samczsun.skype4j.internal.chat.ChatImpl;
+import com.samczsun.skype4j.internal.client.auth.SkypeAuthProvider;
+import com.samczsun.skype4j.internal.client.auth.SkypeRegistrationProvider;
 import com.samczsun.skype4j.internal.participants.info.BotInfoImpl;
 import com.samczsun.skype4j.internal.participants.info.ContactImpl;
-import com.samczsun.skype4j.internal.threads.ActiveThread;
 import com.samczsun.skype4j.internal.threads.AuthenticationChecker;
 import com.samczsun.skype4j.internal.threads.PollThread;
 import com.samczsun.skype4j.internal.threads.ServerPingThread;
@@ -44,9 +48,10 @@ import java.net.HttpURLConnection;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.security.KeyManagementException;
 import java.security.NoSuchAlgorithmException;
+import java.text.MessageFormat;
+import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -57,47 +62,37 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public abstract class SkypeImpl implements Skype {
-    public static final String LINE_SEPARATOR = System.getProperty("line.separator");
     public static final Pattern PAGE_SIZE_PATTERN = Pattern.compile("pageSize=([0-9]+)");
-    public static final String VERSION = "0.2.0-SNAPSHOT";
-
+    static final String VERSION = "0.2.9-SNAPSHOT";
+    private static final String LINE_SEPARATOR = System.getProperty("line.separator");
     protected final AtomicBoolean loggedIn = new AtomicBoolean(false);
-    protected final AtomicBoolean shutdownRequested = new AtomicBoolean(false);
-    protected final AtomicBoolean subscribed = new AtomicBoolean(false);
-
-    protected final UUID guid = UUID.randomUUID();
-    protected final Set<String> resources;
-    protected final List<ErrorHandler> errorHandlers;
-    private final String username;
-    protected ExecutorService scheduler;
-    protected ExecutorService shutdownThread;
-    protected EventDispatcher eventDispatcher = new SkypeEventDispatcher(this);
+    protected final Map<String, Contact> allContacts = Collections.synchronizedMap(new HashMap<>());
+    protected final Set<Contact.ContactRequest> allContactRequests = Collections.synchronizedSet(new HashSet<>());
+    private final AtomicBoolean shutdownRequested = new AtomicBoolean(false);
+    private final AtomicBoolean subscribed = new AtomicBoolean(false);
+    private final UUID guid = UUID.randomUUID();
+    private final Set<String> resources;
+    private final List<ErrorHandler> errorHandlers;
+    // Data
+    private final Map<String, ChatImpl> allChats = Collections.synchronizedMap(new HashMap<>());
+    private final Map<String, BotInfoImpl> allBots = Collections.synchronizedMap(new HashMap<>());
+    private final SkypeRegistrationProvider regTokenProvider;
     protected Map<String, String> cookies = new HashMap<>();
-    protected ServerPingThread serverPingThread;
-    protected ActiveThread activeThread;
-    protected AuthenticationChecker reauthThread;
-    protected PollThread pollThread;
-    protected SkypeWebSocket wss;
-    protected String conversationBackwardLink;
-    protected String conversationSyncState;
     protected Logger logger = Logger.getLogger(Skype.class.getCanonicalName());
-    private String skypeToken;
-    private long skypeTokenExpiryTime;
-    private String registrationToken;
-    private long registrationTokenExpiryTime;
+    private ExecutorService scheduler;
+    private ExecutorService shutdownThread;
+    private EventDispatcher eventDispatcher = new SkypeEventDispatcher(this);
+    private ServerPingThread serverPingThread;
+    private AuthenticationChecker reauthThread;
+    private PollThread pollThread;
+    private SkypeWebSocket wss;
+    private String conversationSyncState;
     private String cloud = "";
-    private String endpointId;
     private JsonObject trouterData;
     private int socketId = 1;
 
-    // Data
-    protected final Map<String, ChatImpl> allChats = Collections.synchronizedMap(new HashMap<>());
-    protected final Map<String, Contact> allContacts = Collections.synchronizedMap(new HashMap<>());
-    protected final Map<String, BotInfoImpl> allBots = Collections.synchronizedMap(new HashMap<>());
-    protected final Set<Contact.ContactRequest> allContactRequests = Collections.synchronizedSet(new HashSet<>());
-
-    public SkypeImpl(String username, Set<String> resources, Logger logger, List<ErrorHandler> errorHandlers) {
-        this.username = username;
+    public SkypeImpl(Set<String> resources, Logger logger, List<ErrorHandler> errorHandlers) {
+        this.regTokenProvider = new SkypeRegistrationProvider();
         this.resources = Collections.unmodifiableSet(new HashSet<>(resources));
         this.errorHandlers = Collections.unmodifiableList(new ArrayList<>(errorHandlers));
         if (logger != null) {
@@ -127,13 +122,19 @@ public abstract class SkypeImpl implements Skype {
         }
     }
 
+    public SkypeRegistrationProvider getRegTokenProvider() {
+        return regTokenProvider;
+    }
+
+    protected abstract SkypeAuthProvider getAuthProvider();
+
     @Override
-    public void login() throws ConnectionException, InvalidCredentialsException {
+    public void login() throws ConnectionException, SkypeAuthenticationException {
         Endpoints.ELIGIBILITY_CHECK.open(this)
                 .expect(200, "You are not eligible to use Skype for Web!")
                 .get();
 
-        this.loggedIn.set(true);
+        this.loggedIn.compareAndSet(false, true);
         if (this.serverPingThread != null) {
             this.serverPingThread.kill();
             this.serverPingThread = null;
@@ -142,8 +143,9 @@ public abstract class SkypeImpl implements Skype {
             this.reauthThread.kill();
             this.reauthThread = null;
         }
-        if (scheduler != null) {
+        if (scheduler != null && !scheduler.isTerminated()) {
             scheduler.shutdownNow();
+            //TODO this looks fishy, find alternative
             while (!scheduler.isTerminated()) ;
         }
         shutdownThread = Executors.newSingleThreadExecutor(new SkypeThreadFactory(this, "Shutdown"));
@@ -155,20 +157,15 @@ public abstract class SkypeImpl implements Skype {
     public List<Chat> loadMoreChats(int amount) throws ConnectionException {
         try {
             JsonObject data;
-            if (this.conversationBackwardLink == null) {
-                if (this.conversationSyncState == null) {
-                    InputStream input = Endpoints.LOAD_CHATS
-                            .open(this, System.currentTimeMillis(), amount)
-                            .as(InputStream.class)
-                            .expect(200, "While loading chats")
-                            .get();
-                    data = Utils.parseJsonObject(input);
-                } else {
-                    return Collections.emptyList();
-                }
+            if (this.conversationSyncState == null) {
+                InputStream input = Endpoints.LOAD_CHATS
+                        .open(this, System.currentTimeMillis(), amount)
+                        .as(InputStream.class)
+                        .expect(200, "While loading chats")
+                        .get();
+                data = Utils.parseJsonObject(input);
             } else {
-                Matcher matcher = PAGE_SIZE_PATTERN.matcher(this.conversationBackwardLink);
-                matcher.find();
+                Matcher matcher = PAGE_SIZE_PATTERN.matcher(this.conversationSyncState);
                 String url = matcher.replaceAll("pageSize=" + amount);
                 data = Endpoints
                         .custom(url, this)
@@ -191,19 +188,16 @@ public abstract class SkypeImpl implements Skype {
             }
 
             JsonObject metadata = data.get("_metadata").asObject();
-            if (metadata.get("backwardLink") != null) {
-                this.conversationBackwardLink = metadata.get("backwardLink").asString();
-            } else {
-                this.conversationBackwardLink = null;
+            if (metadata.get("syncState") != null) {
+                this.conversationSyncState = metadata.get("syncState").asString();
             }
-            this.conversationSyncState = metadata.get("syncState").asString();
             return chats;
         } catch (IOException e) {
             throw ExceptionHandler.generateException("While loading chats", e);
         }
     }
 
-    protected JsonObject buildSubscriptionObject() {
+    private JsonObject buildSubscriptionObject() {
         JsonObject subscriptionObject = new JsonObject();
         subscriptionObject.add("channelType", "httpLongPoll");
         subscriptionObject.add("template", "raw");
@@ -211,24 +205,6 @@ public abstract class SkypeImpl implements Skype {
         this.resources.forEach(interestedResources::add);
         subscriptionObject.add("interestedResources", interestedResources);
         return subscriptionObject;
-    }
-
-    protected JsonObject buildRegistrationObject() {
-        JsonObject registrationObject = new JsonObject();
-        registrationObject.add("id", "messagingService");
-        registrationObject.add("type", "EndpointPresenceDoc");
-        registrationObject.add("selfLink", "uri");
-        JsonObject publicInfo = new JsonObject();
-        publicInfo.add("capabilities", "video|audio");
-        publicInfo.add("type", 1);
-        publicInfo.add("skypeNameVersion", "skype.com");
-        publicInfo.add("nodeInfo", "");
-        publicInfo.add("version", Skype.VERSION);
-        JsonObject privateInfo = new JsonObject();
-        privateInfo.add("epname", "Skype4J");
-        registrationObject.add("publicInfo", publicInfo);
-        registrationObject.add("privateInfo", privateInfo);
-        return registrationObject;
     }
 
     public void shutdown() {
@@ -239,13 +215,14 @@ public abstract class SkypeImpl implements Skype {
                 shutdownThread.shutdown();
                 reauthThread.kill();
                 scheduler.shutdownNow();
+                //TODO this looks fishy, find alternative
                 while (!scheduler.isTerminated()) ;
                 doShutdown();
             });
         }
     }
 
-    public void doShutdown() {
+    private void doShutdown() {
         if (this.pollThread != null) {
             this.pollThread.shutdown();
             this.pollThread = null;
@@ -253,10 +230,6 @@ public abstract class SkypeImpl implements Skype {
         if (this.serverPingThread != null) {
             this.serverPingThread.kill();
             this.serverPingThread = null;
-        }
-        if (this.activeThread != null) {
-            this.activeThread.kill();
-            this.activeThread = null;
         }
         if (this.reauthThread != null) {
             this.reauthThread.kill();
@@ -267,9 +240,14 @@ public abstract class SkypeImpl implements Skype {
             this.wss = null;
         }
 
+        if (scheduler != null && !scheduler.isTerminated()) {
+            scheduler.shutdownNow();
+            //TODO this looks fishy, find alternative
+            while (!scheduler.isTerminated()) ;
+        }
     }
 
-    protected void updateCloud(String anyLocation) {
+    public void updateCloud(String anyLocation) {
         Pattern grabber = Pattern.compile("https?://([^-]*-)client-s");
         Matcher m = grabber.matcher(anyLocation);
         if (m.find()) {
@@ -303,7 +281,7 @@ public abstract class SkypeImpl implements Skype {
     }
 
     @Override
-    public GroupChat joinChat(String id) throws ConnectionException, ChatNotFoundException, NoPermissionException {
+    public GroupChat joinChat(String id) throws ConnectionException, ChatNotFoundException {
         Validate.isTrue(id.startsWith("19:") && id.endsWith("@thread.skype"), "Invalid chat id");
         JsonObject obj = new JsonObject();
         obj.add("role", "User");
@@ -352,26 +330,11 @@ public abstract class SkypeImpl implements Skype {
         return botInfo;
     }
 
-    protected void registerEndpoint() throws ConnectionException {
-        Endpoints.ENDPOINTS_URL
-                .open(this)
-                .noRedirects()
-                .on(301, (connection) -> Endpoints
-                        .custom(Endpoints.ENDPOINTS_URL.url() + "/" + Encoder.encode(endpointId), SkypeImpl.this)
-                        .expect(200, "While registering endpoint")
-                        .header("Authentication", "skypetoken=" + skypeToken)
-                        .header("LockAndKey", Utils.generateChallengeHeader())
-                        .put(new JsonObject().add("endpointFeatures", "Agent")))
-                .expect(201, "While registering endpoint")
-                .header("Authentication", "skypetoken=" + skypeToken)
-                .post(new JsonObject().add("endpointFeatures", "Agent"));
-    }
-
-    public abstract void getContactRequests(boolean fromWebsocket) throws ConnectionException;
+    public abstract void getContactRequests() throws ConnectionException;
 
     public abstract void updateContactList() throws ConnectionException;
 
-    public void registerWebSocket() throws ConnectionException, InterruptedException, URISyntaxException, KeyManagementException, NoSuchAlgorithmException, UnsupportedEncodingException {
+    void registerWebSocket() throws ConnectionException, InterruptedException, URISyntaxException, KeyManagementException, NoSuchAlgorithmException, UnsupportedEncodingException {
         boolean needsToRegister = false;
         if (trouterData == null) {
             trouterData = Endpoints.TROUTER_URL
@@ -402,7 +365,7 @@ public abstract class SkypeImpl implements Skype {
         data.put("ccid", Utils.coerceToString(trouterData.get("ccid")));
         data.put("v", "v2"); //TODO: MAGIC VALUE
         data.put("dom", "web.skype.com"); //TODO: MAGIC VALUE
-        data.put("auth", "true"); //TODO: MAGIC VALUE
+        data.put("refreshToken", "true"); //TODO: MAGIC VALUE
         data.put("tc", new JsonObject()
                 .add("cv", "2015.11.05")
                 .add("hr", "")
@@ -467,11 +430,11 @@ public abstract class SkypeImpl implements Skype {
                     .post(buildSubscriptionObject());
             if (connection.getResponseCode() == 404) {
                 if (connection.getHeaderField("Set-RegistrationToken") != null) {
-                    setRegistrationToken(connection.getHeaderField("Set-RegistrationToken"));
+                    getRegTokenProvider().setRegistrationToken(connection.getHeaderField("Set-RegistrationToken"));
                 }
                 Endpoints
                         .custom("https://" + this.getCloud() + "client-s.gateway.messenger.live.com/v1/users/ME/endpoints/" + Encoder
-                                .encode(endpointId), this)
+                                .encode(getRegTokenProvider().getEndpointId()), this)
                         .header("RegistrationToken", getRegistrationToken())
                         .expect(200, "Err")
                         .put(new JsonObject().add("endpointFeatures", "Agent"));
@@ -481,14 +444,14 @@ public abstract class SkypeImpl implements Skype {
                 throw ExceptionHandler.generateException("While subscribing", connection);
             }
             Endpoints.MESSAGINGSERVICE_URL
-                    .open(this, Encoder.encode(endpointId))
+                    .open(this, Encoder.encode(getRegTokenProvider().getEndpointId()))
                     .expect(200, "While submitting messagingservice")
-                    .put(buildRegistrationObject());
+                    .put(getRegTokenProvider().getRegistrationObject());
             if (this.pollThread != null) {
                 this.pollThread.shutdown();
                 this.pollThread = null;
             }
-            (pollThread = new PollThread(this, Encoder.encode(endpointId))).start();
+            (pollThread = new PollThread(this, Encoder.encode(getRegTokenProvider().getEndpointId()))).start();
             subscribed.set(true);
         } catch (IOException io) {
             throw ExceptionHandler.generateException("While subscribing", io);
@@ -499,46 +462,26 @@ public abstract class SkypeImpl implements Skype {
         }
     }
 
-    public void reauthenticate() throws ConnectionException, InvalidCredentialsException, NotParticipatingException {
+    public void reAuthenticate() throws ConnectionException,
+            SkypeAuthenticationException {
         //todo: keep subscribed until reauth is finished so events aren't lost
         doShutdown();
         login();
+        System.out.println(MessageFormat.format("{0}: Relogin successful", Instant.now().toString()));
         if (subscribed.get()) {
             subscribe();
         }
     }
 
     public String getRegistrationToken() {
-        return this.registrationToken;
-    }
-
-    public void setRegistrationToken(String registrationToken) {
-        String[] splits = registrationToken.split(";");
-        this.registrationToken = splits[0];
-        this.registrationTokenExpiryTime = Long.parseLong(splits[1].substring("expires=".length() + 1)) * 1000;
-        if (splits.length > 2) {
-            this.endpointId = splits[2].split("=")[1];
-            if (this.activeThread != null) {
-                this.activeThread.kill();
-                this.activeThread = null;
-            }
-            (activeThread = new ActiveThread(this, Encoder.encode(endpointId))).start();
-        }
+        return getRegTokenProvider().getRegistrationToken();
     }
 
     public String getSkypeToken() {
-        return this.skypeToken;
+        return getAuthProvider().getSkypeToken();
     }
 
-    public void setSkypeToken(String skypeToken) {
-        this.skypeToken = skypeToken;
-        String[] data = skypeToken.split("\\.");
-        JsonObject object = JsonObject.readFrom(
-                new String(Base64.getDecoder().decode(data[1]), StandardCharsets.UTF_8));
-        this.skypeTokenExpiryTime = object.get("exp").asLong() * 1000;
-    }
-
-    public String getCloud() {
+    String getCloud() {
         return this.cloud;
     }
 
@@ -567,7 +510,7 @@ public abstract class SkypeImpl implements Skype {
     }
 
     public String getUsername() {
-        return this.username;
+        return getAuthProvider().getUsername();
     }
 
     public UUID getGuid() {
@@ -603,22 +546,22 @@ public abstract class SkypeImpl implements Skype {
                 .cookies(cookies)
                 .header("Content-Type", "application/x-www-form-encoded")
                 .expect(204, "While fetching asmtoken")
-                .post("skypetoken=" + Encoder.encode(skypeToken));
+                .post("skypetoken=" + Encoder.encode(getSkypeToken()));
     }
 
     public boolean isAuthenticated() {
-        return System.currentTimeMillis() < skypeTokenExpiryTime;
+        return getExpirationTime().isAfter(Instant.now());
     }
 
     public boolean isRegistrationTokenValid() {
-        return System.currentTimeMillis() < registrationTokenExpiryTime;
+        return getRegTokenProvider().getRegistrationTokenExpiry().isAfter(Instant.now());
     }
 
-    public long getExpirationTime() {
-        return skypeTokenExpiryTime;
+    private Instant getExpirationTime() {
+        return getAuthProvider().getSkypeTokenExpiryTime();
     }
 
-    public SkypeWebSocket getWebSocket() {
+    SkypeWebSocket getWebSocket() {
         return wss;
     }
 

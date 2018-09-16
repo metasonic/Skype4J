@@ -20,7 +20,6 @@ import com.samczsun.skype4j.chat.Chat;
 import com.samczsun.skype4j.events.chat.ChatEvent;
 import com.samczsun.skype4j.formatting.IMoji;
 import com.samczsun.skype4j.participants.Participant;
-import com.samczsun.skype4j.participants.User;
 
 public class FlikReceivedEvent extends ChatEvent {
     private final Participant sender;

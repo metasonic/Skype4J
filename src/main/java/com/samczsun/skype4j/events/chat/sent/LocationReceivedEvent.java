@@ -21,7 +21,6 @@ import com.samczsun.skype4j.events.chat.ChatEvent;
 import com.samczsun.skype4j.formatting.Message;
 import com.samczsun.skype4j.formatting.Text;
 import com.samczsun.skype4j.participants.Participant;
-import com.samczsun.skype4j.participants.User;
 
 import javax.xml.bind.DatatypeConverter;
 import java.io.UnsupportedEncodingException;

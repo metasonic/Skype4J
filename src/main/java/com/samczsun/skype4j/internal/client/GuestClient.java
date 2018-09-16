@@ -16,20 +16,17 @@
 
 package com.samczsun.skype4j.internal.client;
 
-import com.eclipsesource.json.JsonObject;
 import com.samczsun.skype4j.chat.GroupChat;
 import com.samczsun.skype4j.exceptions.ConnectionException;
-import com.samczsun.skype4j.exceptions.InvalidCredentialsException;
-import com.samczsun.skype4j.exceptions.NotParticipatingException;
+import com.samczsun.skype4j.exceptions.SkypeAuthenticationException;
 import com.samczsun.skype4j.exceptions.handler.ErrorHandler;
 import com.samczsun.skype4j.internal.Endpoints;
 import com.samczsun.skype4j.internal.SkypeImpl;
-import com.samczsun.skype4j.internal.Utils;
+import com.samczsun.skype4j.internal.client.auth.SkypeAuthProvider;
+import com.samczsun.skype4j.internal.client.auth.SkypeGuestAuthProvider;
 import com.samczsun.skype4j.internal.utils.UncheckedRunnable;
 import com.samczsun.skype4j.participants.info.Contact;
 
-import javax.xml.bind.DatatypeConverter;
-import java.io.UnsupportedEncodingException;
 import java.net.HttpURLConnection;
 import java.util.ArrayList;
 import java.util.List;
@@ -41,42 +38,31 @@ import java.util.logging.Logger;
 
 public class GuestClient extends SkypeImpl {
     private final String chatId;
-    private final String requestedUsername;
+	private final SkypeAuthProvider authProvider;
 
-    private volatile String actualUsername;
-
-    public GuestClient(String username, String chatId, Set<String> resources, Logger logger, List<ErrorHandler> errorHandlers) {
-        super(username, resources, logger, errorHandlers);
+	public GuestClient(String username, String chatId, Set<String> resources, Logger logger,
+					   List<ErrorHandler> errorHandlers) {
+		super(resources, logger, errorHandlers);
         this.chatId = chatId;
-        this.requestedUsername = username;
+		this.authProvider = new SkypeGuestAuthProvider(username, chatId);
+	}
+
+	@Override
+	protected SkypeAuthProvider getAuthProvider() {
+		return authProvider;
     }
 
     @Override
-    public void login() throws ConnectionException, InvalidCredentialsException {
-        JsonObject response = Endpoints.NEW_GUEST
-                .open(this)
-                .as(JsonObject.class)
-                .on(303, connection -> {
-                    throw new NotParticipatingException();
-                })
-                .expect(201, "While logging in")
-                .header("csrf_token", "skype4j")
-                .cookie("csrf_token", "skype4j")
-                .post(new JsonObject()
-                        .add("name", requestedUsername)
-                        .add("threadId", chatId)
-                        .add("shortId", "Skype4J")
-                        .add("flowId", "Skype4J"));
-        this.setSkypeToken(response.get("skypetoken").asString());
+	public void login() throws ConnectionException, SkypeAuthenticationException {
 
-        String[] splits = response.get("skypetoken").asString().split("\\.");
-        try {
-            String decoded = new String(DatatypeConverter.parseBase64Binary(Utils.makeValidBase64(splits[1])), "UTF-8");
-            JsonObject object = JsonObject.readFrom(decoded).asObject();
-            this.actualUsername = object.get("skypeid").asString();
-        } catch (UnsupportedEncodingException e) {
-            throw new RuntimeException(e);
-        }
+		getAuthProvider().auth(this);
+		Endpoints.ELIGIBILITY_CHECK.open(this)
+				.expect(200, "You are not eligible to use Skype for Web!")
+				.get();
+
+		this.loggedIn.set(true);
+
+		getRegTokenProvider().registerEndpoint(this, getSkypeToken());
 
         List<UncheckedRunnable> tasks = new ArrayList<>();
         tasks.add(() -> {
@@ -84,10 +70,8 @@ public class GuestClient extends SkypeImpl {
             String[] setCookie = asmResponse.getHeaderField("Set-Cookie").split(";")[0].split("=");
             this.cookies.put(setCookie[0], setCookie[1]);
         });
-        tasks.add(this::registerEndpoint);
-
         try {
-            ExecutorService executorService = Executors.newFixedThreadPool(2);
+			ExecutorService executorService = Executors.newFixedThreadPool(1);
             tasks.forEach(executorService::submit);
             executorService.shutdown();
             executorService.awaitTermination(1, TimeUnit.DAYS);
@@ -121,7 +105,7 @@ public class GuestClient extends SkypeImpl {
     }
 
     @Override
-    public void getContactRequests(boolean fromWebsocket) {
+	public void getContactRequests() {
         throw new UnsupportedOperationException("Not supported with a guest account");
     }
 
@@ -132,9 +116,6 @@ public class GuestClient extends SkypeImpl {
 
     @Override
     public String getUsername() {
-        if (actualUsername == null) {
-            throw new IllegalStateException("Should not be called when login has not completed");
-        }
-        return actualUsername;
+		return this.authProvider.getUsername();
     }
 }

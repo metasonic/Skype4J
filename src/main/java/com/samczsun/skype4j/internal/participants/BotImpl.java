@@ -16,22 +16,16 @@
 
 package com.samczsun.skype4j.internal.participants;
 
-import com.samczsun.skype4j.chat.messages.ChatMessage;
-import com.samczsun.skype4j.exceptions.ConnectionException;
 import com.samczsun.skype4j.internal.SkypeImpl;
-import com.samczsun.skype4j.internal.chat.ChatBot;
 import com.samczsun.skype4j.internal.chat.ChatImpl;
 import com.samczsun.skype4j.participants.Bot;
 import com.samczsun.skype4j.participants.info.BotInfo;
-
-import java.util.List;
-import java.util.UUID;
 
 public class BotImpl extends ParticipantImpl implements Bot {
 
     private BotInfo botInfo;
 
-    public BotImpl(SkypeImpl skype, ChatImpl chat, String id) throws ConnectionException {
+    public BotImpl(SkypeImpl skype, ChatImpl chat, String id) {
         super(skype, chat, id);
     }
 

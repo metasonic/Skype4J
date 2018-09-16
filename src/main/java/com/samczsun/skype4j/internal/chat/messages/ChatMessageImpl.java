@@ -18,15 +18,9 @@ package com.samczsun.skype4j.internal.chat.messages;
 
 import com.samczsun.skype4j.chat.Chat;
 import com.samczsun.skype4j.chat.messages.ChatMessage;
-import com.samczsun.skype4j.exceptions.ConnectionException;
 import com.samczsun.skype4j.formatting.Message;
 import com.samczsun.skype4j.internal.SkypeImpl;
-import com.samczsun.skype4j.internal.chat.ChatImpl;
 import com.samczsun.skype4j.internal.participants.ParticipantImpl;
-import com.samczsun.skype4j.internal.participants.UserImpl;
-import com.samczsun.skype4j.participants.Participant;
-import com.samczsun.skype4j.participants.User;
-import org.jsoup.helper.Validate;
 
 public abstract class ChatMessageImpl implements ChatMessage {
 

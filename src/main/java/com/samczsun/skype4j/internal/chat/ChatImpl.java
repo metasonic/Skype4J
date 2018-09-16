@@ -33,7 +33,6 @@ import com.samczsun.skype4j.internal.participants.UserImpl;
 import com.samczsun.skype4j.internal.threads.TypingThread;
 import com.samczsun.skype4j.participants.Participant;
 import com.samczsun.skype4j.participants.info.Contact;
-import com.samczsun.skype4j.participants.User;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
@@ -45,7 +44,6 @@ import java.nio.file.Files;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.regex.Matcher;
 
@@ -57,12 +55,11 @@ public abstract class ChatImpl implements Chat {
     private final String identity;
 
     private SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSX");
-    private String backwardLink;
     private String syncState;
 
     private TypingThread typingThread;
 
-    ChatImpl(SkypeImpl client, String identity) throws ConnectionException, ChatNotFoundException {
+    ChatImpl(SkypeImpl client, String identity) {
         this.client = client;
         this.identity = identity;
     }
@@ -116,7 +113,7 @@ public abstract class ChatImpl implements Chat {
         sendImage(data, name);
     }
 
-    private void sendImage(byte[] data, String imageName) throws ConnectionException, IOException {
+    private void sendImage(byte[] data, String imageName) throws ConnectionException {
         String id = Utils.uploadImage(data, Utils.ImageType.IMGT1, this);
         long ms = System.currentTimeMillis();
         String content = "<URIObject type=\"Picture.1\" uri=\"https://api.asm.skype.com/v1/objects/%s\" url_thumbnail=\"https://api.asm.skype.com/v1/objects/%s/views/imgt1\">MyLegacy pish <a href=\"https://api.asm.skype.com/s/i?%s\">https://api.asm.skype.com/s/i?%s</a><Title/><Description/><OriginalName v=\"%s\"/><meta type=\"photo\" originalName=\"%s\"/></URIObject>";
@@ -171,22 +168,16 @@ public abstract class ChatImpl implements Chat {
     @Override
     public List<ChatMessage> loadMoreMessages(int amount) throws ConnectionException {
         JsonObject data;
-        if (backwardLink == null) {
-            if (syncState == null) {
-                data = Endpoints.LOAD_MESSAGES
-                        .open(getClient(), getIdentity(), amount)
-                        .as(JsonObject.class)
-                        .expect(200, "While loading messages")
-                        .get();
-            } else {
-                return Collections.emptyList();
-            }
+        if (syncState == null) {
+            data = Endpoints.LOAD_MESSAGES
+                    .open(getClient(), getIdentity(), amount)
+                    .as(JsonObject.class)
+                    .expect(200, "While loading messages")
+                    .get();
         } else {
-            Matcher matcher = SkypeImpl.PAGE_SIZE_PATTERN.matcher(this.backwardLink);
-            //Matcher find appears to be doing nothing.
-            matcher.find();
+            Matcher matcher = SkypeImpl.PAGE_SIZE_PATTERN.matcher(this.syncState);
             String url = matcher.replaceAll("pageSize=" + amount);
-            data =  Endpoints
+            data = Endpoints
                     .custom(url, getClient())
                     .header("RegistrationToken", getClient().getRegistrationToken())
                     .as(JsonObject.class)
@@ -205,7 +196,7 @@ public abstract class ChatImpl implements Chat {
                         ChatMessage m = Factory.createMessage(this, u, msg.get("id").asString(),
                                 msg.get("clientmessageid").asString(),
                                 formatter.parse(msg.get("originalarrivaltime").asString()).getTime(), message
-                                ,getClient());
+                                , getClient());
                         this.messages.add(0, m);
                         u.insertMessage(m, 0);
                         messages.add(m);
@@ -222,12 +213,9 @@ public abstract class ChatImpl implements Chat {
         }
 
         JsonObject metadata = data.get("_metadata").asObject();
-        if (metadata.get("backwardLink") != null) {
-            this.backwardLink = metadata.get("backwardLink").asString();
-        } else {
-            this.backwardLink = null;
+        if (metadata.get("syncState") != null) {
+            this.syncState = metadata.get("syncState").asString();
         }
-        this.syncState = metadata.get("syncState").asString();
         return messages;
     }
 
@@ -238,8 +226,17 @@ public abstract class ChatImpl implements Chat {
 
     @Override
     public ParticipantImpl getParticipant(String username) {
-        username = username.startsWith("8:") ? username : "8:" + username;
-        return this.users.get(username.toLowerCase());
+        if (username.startsWith("8:")) {
+            return this.users.get(username.toLowerCase());
+        } else if (username.startsWith("28:")) {
+            // for bots
+            return this.users.get(username.toLowerCase());
+        } else if (username.startsWith("2:")) {
+            // for skype for business
+            return this.users.get(username.toLowerCase());
+        } else {
+            return this.users.get("8:" + username.toLowerCase());
+        }
     }
 
     @Override
@@ -308,7 +305,7 @@ public abstract class ChatImpl implements Chat {
 
     public abstract void load() throws ConnectionException, ChatNotFoundException;
 
-    protected void putOption(String option, JsonValue value, boolean global) throws ConnectionException {
+    void putOption(String option, JsonValue value, boolean global) throws ConnectionException {
         JsonObject obj = new JsonObject();
         obj.add(option, value);
         (global ? Endpoints.CONVERSATION_PROPERTY_GLOBAL : Endpoints.CONVERSATION_PROPERTY_SELF)
