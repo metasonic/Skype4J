@@ -31,17 +31,11 @@ public enum EventType {
     NEW_MESSAGE("NewMessage") {
         @Override
         public void handle(SkypeImpl skype, JsonObject eventObj) throws SkypeException, IOException {
-
             JsonObject resource = eventObj.get("resource").asObject();
             String type = Utils.getString(resource, "messagetype");
-            String content = Utils.getString(resource, "content");
             try {
-                if (content == null) {
-                    MessageType.TEXT_INTERNAL.handle(skype, resource);
-                } else {
-                    Validate.notNull(type, "Null type");
-                    MessageType.getByName(type).handle(skype, resource);
-                }
+                Validate.notNull(type, "Null type");
+                MessageType.getByName(type).handle(skype, resource);
             } catch (Throwable t) {
                 t.addSuppressed(new SkypeException(resource.toString()));
                 throw t;
