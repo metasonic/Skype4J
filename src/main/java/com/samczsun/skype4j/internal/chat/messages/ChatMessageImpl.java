@@ -30,7 +30,7 @@ public abstract class ChatMessageImpl implements ChatMessage {
     private final ParticipantImpl sender;
     private final Chat chat;
     private final String id;
-    private final long time;
+    private long time;
 
     private Message message;
 
@@ -81,5 +81,10 @@ public abstract class ChatMessageImpl implements ChatMessage {
 
     public void edit0(Message newMessage) {
         this.message = newMessage;
+    }
+
+    @Override
+    public void setSentTime(Long time) {
+        this.time = time;
     }
 }

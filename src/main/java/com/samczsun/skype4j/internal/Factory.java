@@ -45,6 +45,8 @@ public class Factory {
             }
         } else if (identity.startsWith("8:")) {
             result = new ChatIndividual(client, identity);
+        } else if (identity.startsWith("2:")) {
+            result = new ChatIndividual(client, identity);
         } else if (identity.startsWith("28:")) {
             result = new ChatBot(client, identity);
         }
@@ -66,6 +68,8 @@ public class Factory {
 
         if (id.startsWith("8:")) {
             result = new UserImpl(client, chat, id);
+        } else if (id.startsWith("2:")) {
+            result = new UserImpl(client, chat, id);
         } else if (id.startsWith("28:")) {
             result = new BotImpl(client, chat, id);
         }
@@ -77,12 +81,14 @@ public class Factory {
         throw new IllegalArgumentException(String.format("Unknown participant type with id %s", id));
     }
 
-    public static ChatMessageImpl createMessage(Chat chat, ParticipantImpl user, String id, String clientId, long time, Message message, SkypeImpl skype) {
+    public static ChatMessageImpl createMessage(Chat chat, ParticipantImpl user, String id, String clientId, long time, Message message, SkypeImpl skype) throws ConnectionException {
         Validate.notNull(chat, "Chat must not be null");
         Validate.isTrue(chat instanceof ChatImpl, "Chat must be instanceof ChatImpl");
         Validate.notNull(user, "User must not be null");
 
         if (("8:" + chat.getClient().getUsername()).equals(user.getId())) {
+            return new SentMessageImpl(chat, user, id, clientId, time, message, skype);
+        } else if (("2:" + chat.getClient().getUsername()).equals(user.getId())) {
             return new SentMessageImpl(chat, user, id, clientId, time, message, skype);
         } else {
             return new ReceivedMessageImpl(chat, user, id, clientId, time, message, skype);

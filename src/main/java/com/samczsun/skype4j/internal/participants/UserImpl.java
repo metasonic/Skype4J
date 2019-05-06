@@ -16,15 +16,17 @@
 
 package com.samczsun.skype4j.internal.participants;
 
+import com.samczsun.skype4j.exceptions.ConnectionException;
 import com.samczsun.skype4j.internal.SkypeImpl;
 import com.samczsun.skype4j.internal.chat.ChatImpl;
 import com.samczsun.skype4j.participants.User;
 import com.samczsun.skype4j.participants.info.Contact;
 
+
 public class UserImpl extends ParticipantImpl implements User {
     private Contact contactRep;
 
-    public UserImpl(SkypeImpl skype, ChatImpl chat, String id) {
+    public UserImpl(SkypeImpl skype, ChatImpl chat, String id) throws ConnectionException {
         super(skype, chat, id);
     }
 

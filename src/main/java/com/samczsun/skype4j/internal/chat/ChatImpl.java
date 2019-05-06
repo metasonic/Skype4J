@@ -55,6 +55,7 @@ public abstract class ChatImpl implements Chat {
     private final String identity;
 
     private SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSX");
+    private String backwardLink;
     private String syncState;
 
     private TypingThread typingThread;
@@ -168,16 +169,22 @@ public abstract class ChatImpl implements Chat {
     @Override
     public List<ChatMessage> loadMoreMessages(int amount) throws ConnectionException {
         JsonObject data;
-        if (syncState == null) {
-            data = Endpoints.LOAD_MESSAGES
-                    .open(getClient(), getIdentity(), amount)
-                    .as(JsonObject.class)
-                    .expect(200, "While loading messages")
-                    .get();
+        if (backwardLink == null) {
+            if (syncState == null) {
+                data = Endpoints.LOAD_MESSAGES
+                        .open(getClient(), getIdentity(), amount)
+                        .as(JsonObject.class)
+                        .expect(200, "While loading messages")
+                        .get();
+            } else {
+                return Collections.emptyList();
+            }
         } else {
-            Matcher matcher = SkypeImpl.PAGE_SIZE_PATTERN.matcher(this.syncState);
+            Matcher matcher = SkypeImpl.PAGE_SIZE_PATTERN.matcher(this.backwardLink);
+            //Matcher find appears to be doing nothing.
+            matcher.find();
             String url = matcher.replaceAll("pageSize=" + amount);
-            data = Endpoints
+            data =  Endpoints
                     .custom(url, getClient())
                     .header("RegistrationToken", getClient().getRegistrationToken())
                     .as(JsonObject.class)
@@ -196,7 +203,7 @@ public abstract class ChatImpl implements Chat {
                         ChatMessage m = Factory.createMessage(this, u, msg.get("id").asString(),
                                 msg.get("clientmessageid").asString(),
                                 formatter.parse(msg.get("originalarrivaltime").asString()).getTime(), message
-                                , getClient());
+                                ,getClient());
                         this.messages.add(0, m);
                         u.insertMessage(m, 0);
                         messages.add(m);
@@ -213,9 +220,12 @@ public abstract class ChatImpl implements Chat {
         }
 
         JsonObject metadata = data.get("_metadata").asObject();
-        if (metadata.get("syncState") != null) {
-            this.syncState = metadata.get("syncState").asString();
+        if (metadata.get("backwardLink") != null) {
+            this.backwardLink = metadata.get("backwardLink").asString();
+        } else {
+            this.backwardLink = null;
         }
+        this.syncState = metadata.get("syncState").asString();
         return messages;
     }
 
@@ -305,7 +315,7 @@ public abstract class ChatImpl implements Chat {
 
     public abstract void load() throws ConnectionException, ChatNotFoundException;
 
-    void putOption(String option, JsonValue value, boolean global) throws ConnectionException {
+    protected void putOption(String option, JsonValue value, boolean global) throws ConnectionException {
         JsonObject obj = new JsonObject();
         obj.add(option, value);
         (global ? Endpoints.CONVERSATION_PROPERTY_GLOBAL : Endpoints.CONVERSATION_PROPERTY_SELF)

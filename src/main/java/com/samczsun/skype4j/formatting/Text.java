@@ -36,6 +36,22 @@ public abstract class Text {
     public static final Text BLANK = plain("");
 
     /**
+     * Get the HTML of this text
+     *
+     * @return The HTML
+     */
+    public abstract String write();
+
+    /**
+     * The equivilant of calling {@code Text#write}
+     *
+     * @return The HTML of this text
+     */
+    public String toString() {
+        return this.write();
+    }
+
+    /**
      * Creates a new RichText component
      *
      * @param text The plain text to wrap in the RichText object
@@ -191,21 +207,5 @@ public abstract class Text {
             }
         }
         return result.toString();
-    }
-
-    /**
-     * Get the HTML of this text
-     *
-     * @return The HTML
-     */
-    public abstract String write();
-
-    /**
-     * The equivilant of calling {@code Text#write}
-     *
-     * @return The HTML of this text
-     */
-    public String toString() {
-        return this.write();
     }
 }

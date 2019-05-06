@@ -1,9 +1,10 @@
 package com.samczsun.skype4j.internal.chat;
 
-import com.samczsun.skype4j.LiveLoginSkypeBuilder;
 import com.samczsun.skype4j.Skype;
+import com.samczsun.skype4j.SkypeBuilder;
 import com.samczsun.skype4j.chat.Chat;
 import com.samczsun.skype4j.chat.messages.ChatMessage;
+import com.samczsun.skype4j.exceptions.ConnectionException;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -15,8 +16,16 @@ import static org.junit.Assert.assertFalse;
 
 public class ChatImplTest {
     private static final Logger logger = Logger.getLogger(Skype.class.getCanonicalName());
-    Skype skype = new LiveLoginSkypeBuilder("a.semennikov@argustelecom.ru", "HellSkype3Bot").withAllResources()
-            .withLogger(logger).build();
+    Skype skype;
+
+    {
+        try {
+            skype = new SkypeBuilder("a.semennikov@argustelecom.ru", "HellSkype3Bot").withAllResources()
+                        .withLogger(logger).build();
+        } catch (ConnectionException e) {
+            e.printStackTrace();
+        }
+    }
 
     @Before
     public void setUp() throws Exception {

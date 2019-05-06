@@ -303,26 +303,14 @@ public enum Moji implements IMoji {
     VICKYDONOR_1("14271874627f4a2d893db568eeff9954", "3c026c7d-aa37-4fe1-8bfb-133460aed512", "Vicky Donor"),
     MOHABBATEIN("b3cffea2fd5044d08db7458e4c373cdf", "5b000c95-f530-4a7f-b302-842675aaa249", "Mohabbatein ");
 
-    private static final Map<String, IMoji> fliks = new HashMap<>();
-
-    static {
-        for (IMoji flik : values()) {
-            fliks.put(flik.getId(), flik);
-        }
-    }
-
-    private final String id;
-    private final String etag;
-    private final String desc;
+    private String id;
+    private String etag;
+    private String desc;
 
     Moji(String id, String etag, String desc) {
         this.id = id;
         this.etag = etag;
         this.desc = desc;
-    }
-
-    public static IMoji getById(String id) {
-        return fliks.get(id);
     }
 
     public String getId() {
@@ -335,5 +323,17 @@ public enum Moji implements IMoji {
 
     public String getDescription() {
         return this.desc;
+    }
+
+    private static final Map<String, IMoji> fliks = new HashMap<>();
+
+    static {
+        for (IMoji flik : values()) {
+            fliks.put(flik.getId(), flik);
+        }
+    }
+
+    public static IMoji getById(String id) {
+        return fliks.get(id);
     }
 }

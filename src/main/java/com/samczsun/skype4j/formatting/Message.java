@@ -41,18 +41,6 @@ public class Message {
     }
 
     /**
-     * Parse a message from raw HTML
-     *
-     * @param text The HTML to parse from
-     * @return The message object
-     */
-    public static Message fromHtml(String text) {
-        final Message parsed = create();
-        parsed.with(RichText.fromHtml(text));
-        return parsed;
-    }
-
-    /**
      * Add a child to this message
      *
      * @param text The child
@@ -111,6 +99,18 @@ public class Message {
      */
     public List<Text> children() {
         return Collections.unmodifiableList(this.components);
+    }
+
+    /**
+     * Parse a message from raw HTML
+     *
+     * @param text The HTML to parse from
+     * @return The message object
+     */
+    public static Message fromHtml(String text) {
+        final Message parsed = create();
+        parsed.with(RichText.fromHtml(text));
+        return parsed;
     }
 
     @Override

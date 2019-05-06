@@ -21,7 +21,6 @@ import com.eclipsesource.json.JsonValue;
 import com.samczsun.skype4j.exceptions.ConnectionException;
 import com.samczsun.skype4j.exceptions.handler.ErrorSource;
 import com.samczsun.skype4j.internal.*;
-import com.samczsun.skype4j.internal.client.auth.SkypeRegistrationProvider;
 
 import java.io.IOException;
 import java.net.HttpURLConnection;
@@ -37,7 +36,6 @@ public class PollThread extends Thread {
 
     private IOException pendingException;
     private HttpURLConnection connection;
-    private SkypeRegistrationProvider skypeRegistrationProvider;
 
     public PollThread(SkypeImpl skype, String endpointId) {
         super(String.format("Skype4J-Poller-%s", skype.getUsername()));
@@ -49,7 +47,7 @@ public class PollThread extends Thread {
     public void run() {
         int pollId = 0;
         while (skype.isAuthenticated()) {
-            final EndpointConnection<HttpURLConnection> epconn = Endpoints.POLL
+            final Endpoints.EndpointConnection<HttpURLConnection> epconn = Endpoints.POLL
                     .open(skype, pollId)
                     .header("Content-Type", "application/json")
                     .dontConnect();
@@ -84,8 +82,7 @@ public class PollThread extends Thread {
                     }
 
                     if (connection.getHeaderField("Set-RegistrationToken") != null) {
-                        //needed as a Set-RegistrationToken comes really really often
-                        skype.getRegTokenProvider().setRegistrationToken(connection.getHeaderField("Set-RegistrationToken"));
+                        skype.setRegistrationToken(connection.getHeaderField("Set-RegistrationToken"));
                     }
 
                     if (connection.getResponseCode() == 403) {
@@ -103,7 +100,7 @@ public class PollThread extends Thread {
                             }
                             String regtoken = conn.getHeaderField("Set-RegistrationToken");
                             if (regtoken != null) {
-                                skype.getRegTokenProvider().setRegistrationToken(connection.getHeaderField("Set-RegistrationToken"));
+                                skype.setRegistrationToken(regtoken);
                             }
                             JsonObject object = Utils.parseJsonObject(conn.getInputStream());
                             if (object.get("subscriptions") != null) {
@@ -159,11 +156,19 @@ public class PollThread extends Thread {
 
     public void shutdown() {
         this.interrupt();
-        while (this.getState() != State.TERMINATED) ;
+        while (this.getState() != State.TERMINATED) {
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException ex) { return; }
+        }
         if (this.connection != null) {
             this.connection.disconnect();
         }
         this.inputFetcher.shutdownNow();
-        while (!this.inputFetcher.isTerminated()) ;
+        while (!this.inputFetcher.isTerminated()) {
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException ex) { return; }
+        }
     }
 }

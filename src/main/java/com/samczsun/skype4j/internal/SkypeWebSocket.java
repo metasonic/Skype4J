@@ -17,25 +17,18 @@
 package com.samczsun.skype4j.internal;
 
 import com.eclipsesource.json.JsonObject;
+import com.samczsun.skype4j.events.SaveContactsEvent;
 import com.samczsun.skype4j.exceptions.ConnectionException;
 import com.samczsun.skype4j.exceptions.handler.ErrorSource;
 import com.samczsun.skype4j.internal.client.FullClient;
-import org.java_websocket.SSLSocketChannel2;
-import org.java_websocket.client.DefaultSSLWebSocketClientFactory;
 import org.java_websocket.client.WebSocketClient;
-import org.java_websocket.drafts.Draft_17;
+import org.java_websocket.drafts.Draft_6455;
 import org.java_websocket.handshake.ServerHandshake;
 
 import javax.net.ssl.SSLContext;
-import javax.net.ssl.SSLEngine;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
-import java.io.IOException;
 import java.net.URI;
-import java.nio.ByteBuffer;
-import java.nio.channels.ByteChannel;
-import java.nio.channels.SelectionKey;
-import java.nio.channels.SocketChannel;
 import java.security.KeyManagementException;
 import java.security.NoSuchAlgorithmException;
 import java.security.cert.X509Certificate;
@@ -50,37 +43,14 @@ public class SkypeWebSocket extends WebSocketClient {
     private Thread pingThread;
 
     public SkypeWebSocket(final SkypeImpl skype, URI uri) throws NoSuchAlgorithmException, KeyManagementException {
-        super(uri, new Draft_17(), null, 2000);
+        super(uri, new Draft_6455(), null, 2000);
+
+
         this.skype = skype;
         this.singleThreaded = Executors.newSingleThreadExecutor(new SkypeThreadFactory(skype, "WSFactory"));
         TrustManager[] trustAllCerts = new TrustManager[]{new TrustAllManager()};
         SSLContext sc = SSLContext.getInstance("SSL");
         sc.init(null, trustAllCerts, new java.security.SecureRandom());
-        this.setWebSocketFactory(new DefaultSSLWebSocketClientFactory(sc, singleThreaded) {
-            private boolean called = false;
-
-            @Override
-            public ByteChannel wrapChannel(SocketChannel channel, SelectionKey key, String host, int port) throws IOException {
-                if (!called) {
-                    Thread.currentThread().setName("Skype4J-WSMainThread-" + skype.getUsername());
-                }
-                SSLEngine e = sslcontext.createSSLEngine(host, port);
-                e.setUseClientMode(true);
-                ByteChannel c = new SSLSocketChannel2(channel, e, exec, key) {
-                    private boolean called = false;
-
-                    @Override
-                    public int write(ByteBuffer buffer) throws IOException {
-                        if (!called) {
-                            Thread.currentThread().setName("Skype4J-WSWriteThread-" + skype.getUsername());
-                            called = true;
-                        }
-                        return super.write(buffer);
-                    }
-                };
-                return c;
-            }
-        });
     }
 
     @Override
@@ -110,13 +80,15 @@ public class SkypeWebSocket extends WebSocketClient {
             if (event == 6) {
                 try {
                     skype.updateContactList();
+                    SaveContactsEvent eventContacts = new SaveContactsEvent();
+                    skype.getEventDispatcher().callEvent(eventContacts);
                 } catch (ConnectionException e) {
                     skype.handleError(ErrorSource.UPDATING_CONTACT_LIST, e, false);
                 }
             } else if (event == 14) {
                 try {
                     if (skype instanceof FullClient) {
-                        skype.getContactRequests();
+                        skype.getContactRequests(true);
                     }
                 } catch (ConnectionException e) {
                     skype.getLogger().log(Level.SEVERE, String.format("Unhandled exception while parsing websocket message '%s'", s), e);
@@ -173,7 +145,11 @@ public class SkypeWebSocket extends WebSocketClient {
             pingThread.interrupt();
         }
         singleThreaded.shutdown();
-        while (!singleThreaded.isTerminated()) ;
+        while (!singleThreaded.isTerminated()) {
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException ex) { return; }
+        }
         if (skype.getWebSocket() == this) {
             try {
                 skype.registerWebSocket();

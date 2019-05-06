@@ -20,10 +20,7 @@ import java.util.List;
 
 public interface IEmoticon {
     String getId();
-
     List<String> getShortcuts();
-
     String getEtag();
-
     String getDescription();
 }

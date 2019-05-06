@@ -37,8 +37,6 @@ import java.util.stream.StreamSupport;
 
 public class Utils {
 
-    private static final String FORMAT = "appId=%s; time=%s; lockAndKeyResponse=%s";
-
     public static JsonObject parseJsonObject(InputStream inputStream) throws IOException {
         return parseJsonValue(inputStream).asObject();
     }
@@ -79,7 +77,7 @@ public class Utils {
                 .expect(201, "While uploading data")
                 .connect("PUT", data);
 
-        EndpointConnection<JsonObject> econn = Endpoints.IMG_STATUS
+        Endpoints.EndpointConnection<JsonObject> econn = Endpoints.IMG_STATUS
                 .open(chat.getClient(), id, type.id)
                 .as(JsonObject.class)
                 .expect(200, "While getting upload status");
@@ -100,6 +98,22 @@ public class Utils {
         return value.isString() ? value.asString() : value.toString();
     }
 
+    public enum ImageType {
+        IMGT1("pish/image", "imgpsh", "imgt1"),
+        AVATAR("avatar/group", "avatar", "avatar_fullsize"), //Also has "avatar"
+        FILE("sharing/file", "original", "thumbnail");
+
+        private String mime;
+        private String endpoint;
+        private String id;
+
+        ImageType(String mime, String endpoint, String id) {
+            this.mime = mime;
+            this.endpoint = endpoint;
+            this.id = id;
+        }
+    }
+
     public static <T> Stream<T> asStream(Iterable<T> sourceIterable) {
         return asStream(sourceIterable.iterator());
     }
@@ -114,7 +128,7 @@ public class Utils {
     }
 
     public static void sneakyThrow(Throwable ex) {
-        Utils.sneakyThrowInner(ex);
+        Utils.<RuntimeException>sneakyThrowInner(ex);
     }
 
     private static <T extends Throwable> T sneakyThrowInner(Throwable ex) throws T {
@@ -157,6 +171,8 @@ public class Utils {
         while (input.length() % 4 != 0) input += "=";
         return input;
     }
+
+    private static final String FORMAT = "appId=%s; time=%s; lockAndKeyResponse=%s";
 
     private static String generateTime() {
         long ms = System.currentTimeMillis();
@@ -212,6 +228,26 @@ public class Utils {
         E = Long.reverseBytes(E) >>> 32;
         return Long.toHexString(y) + Long.toHexString(b) + Long.toHexString(w) + Long.toHexString(E);
     }
+    /* function(t, n, r) {
+        var s = t + n,
+            f = s,
+            l = 8 - f.length % 8;
+        l !== 8 && (f = a(f, f.length + l, "0"));
+        var c = f.length / 4,
+            h = [],
+            p, d;
+        for (p = 0, d = 0; p < c; p++) h.splice(p, 0, 0), h[p] = h[p] + f.charCodeAt(d++) * 1, h[p] = h[p] + f.charCodeAt(d++) * 256, h[p] = h[p] + f.charCodeAt(d++) * 65536, h[p] = h[p] + f.charCodeAt(d++) * 16777216;
+        var v = new Array(4),
+            m = o(t + r);
+        for (p = 0, d = 0; p < v.length; p++) v[p] = 0, v[p] += i.parseHexInt(m.substr(d, 2)) * 1, d += 2, v[p] += i.parseHexInt(m.substr(d, 2)) * 256, d += 2, v[p] += i.parseHexInt(m.substr(d, 2)) * 65536, d += 2, v[p] += i.parseHexInt(m.substr(d, 2)) * 16777216, d += 2;
+        var g = new Array(2);
+        this._cS64_C(h, v, g);
+        var y = u(v[0], g[0]),
+            b = u(v[1], g[1]),
+            w = u(v[2], g[0]),
+            E = u(v[3], g[1]);
+        return this._int32ToHexString(y) + this._int32ToHexString(b) + this._int32ToHexString(w) + this._int32ToHexString(E)
+    }*/
 
     private static void _cS64_C(long[] t, long[] n, long[] i) {
         long s = 2147483647;
@@ -256,50 +292,6 @@ public class Utils {
         i[0] = Long.parseLong(b.toString(), 10);
         i[1] = Long.parseLong(w.toString(), 10);
     }
-    /* function(t, n, r) {
-        var s = t + n,
-            f = s,
-            l = 8 - f.length % 8;
-        l !== 8 && (f = a(f, f.length + l, "0"));
-        var c = f.length / 4,
-            h = [],
-            p, d;
-        for (p = 0, d = 0; p < c; p++) h.splice(p, 0, 0), h[p] = h[p] + f.charCodeAt(d++) * 1, h[p] = h[p] + f.charCodeAt(d++) * 256, h[p] = h[p] + f.charCodeAt(d++) * 65536, h[p] = h[p] + f.charCodeAt(d++) * 16777216;
-        var v = new Array(4),
-            m = o(t + r);
-        for (p = 0, d = 0; p < v.length; p++) v[p] = 0, v[p] += i.parseHexInt(m.substr(d, 2)) * 1, d += 2, v[p] += i.parseHexInt(m.substr(d, 2)) * 256, d += 2, v[p] += i.parseHexInt(m.substr(d, 2)) * 65536, d += 2, v[p] += i.parseHexInt(m.substr(d, 2)) * 16777216, d += 2;
-        var g = new Array(2);
-        this._cS64_C(h, v, g);
-        var y = u(v[0], g[0]),
-            b = u(v[1], g[1]),
-            w = u(v[2], g[0]),
-            E = u(v[3], g[1]);
-        return this._int32ToHexString(y) + this._int32ToHexString(b) + this._int32ToHexString(w) + this._int32ToHexString(E)
-    }*/
-
-    private static long u(long e, long t) {
-        String r = Long.toBinaryString(e);
-        String i = Long.toBinaryString(t);
-        StringBuilder s = new StringBuilder();
-        StringBuilder o = new StringBuilder();
-        int u = Math.abs(r.length() - i.length());
-        for (int a = 0; a < u; a++) {
-            o.append("0");
-        }
-        if (r.length() < i.length()) {
-            o.append(r);
-            r = o.toString();
-        } else {
-            if (i.length() < r.length()) {
-                o.append(i);
-                i = o.toString();
-            }
-        }
-        for (int a = 0; a < r.length(); a++) {
-            s.append(r.charAt(a) == i.charAt(a) ? "0" : "1");
-        }
-        return Long.parseLong(s.toString(), 2);
-    }
 
     /* function _cS64_C(t, n, i) {
         var s = 2147483647;
@@ -341,20 +333,28 @@ public class Utils {
         b.modulus(g), w.add(d), w.modulus(g), i[0] = parseInt(b.toString(), 10), i[1] = parseInt(w.toString(), 10), true;
     } */
 
-    public enum ImageType {
-        IMGT1("pish/image", "imgpsh", "imgt1"),
-        AVATAR("avatar/group", "avatar", "avatar_fullsize"), //Also has "avatar"
-        FILE("sharing/file", "original", "thumbnail");
-
-        private String mime;
-        private String endpoint;
-        private String id;
-
-        ImageType(String mime, String endpoint, String id) {
-            this.mime = mime;
-            this.endpoint = endpoint;
-            this.id = id;
+    private static long u(long e, long t) {
+        String r = Long.toBinaryString(e);
+        String i = Long.toBinaryString(t);
+        StringBuilder s = new StringBuilder();
+        StringBuilder o = new StringBuilder();
+        int u = Math.abs(r.length() - i.length());
+        for (int a = 0; a < u; a++) {
+            o.append("0");
         }
+        if (r.length() < i.length()) {
+            o.append(r);
+            r = o.toString();
+        } else {
+            if (i.length() < r.length()) {
+                o.append(i);
+                i = o.toString();
+            }
+        }
+        for (int a = 0; a < r.length(); a++) {
+            s.append(r.charAt(a) == i.charAt(a) ? "0" : "1");
+        }
+        return Long.parseLong(s.toString(), 2);
     }
 
     /* function u(e, t) {

@@ -16,15 +16,21 @@
 
 package com.samczsun.skype4j.internal.threads;
 
+import com.eclipsesource.json.JsonObject;
 import com.samczsun.skype4j.exceptions.ConnectionException;
 import com.samczsun.skype4j.exceptions.handler.ErrorSource;
 import com.samczsun.skype4j.internal.Endpoints;
 import com.samczsun.skype4j.internal.SkypeImpl;
+import com.samczsun.skype4j.internal.Utils;
 
+import java.io.IOException;
+import java.net.HttpURLConnection;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class ServerPingThread extends Thread {
     private static final Map<String, AtomicInteger> ID = new ConcurrentHashMap<>();
@@ -32,24 +38,35 @@ public class ServerPingThread extends Thread {
 
     private SkypeImpl skype;
     private AtomicBoolean stop = new AtomicBoolean(false);
+    private Logger logger = Logger.getLogger(ServerPingThread.class.getSimpleName());
 
     public ServerPingThread(SkypeImpl skype) {
         super(String.format("Skype4J-ServerPing-%s-%s", skype.getUsername(), ID.computeIfAbsent(skype.getUsername(), str -> new AtomicInteger()).getAndIncrement()));
         this.skype = skype;
+        logger.log(Level.INFO, "__ServerPingThread started");
     }
 
     public void run() {
         while (skype.isLoggedIn() && !stop.get()) {
-            if (!skype.isAuthenticated() || stop.get()) {
+            if (!skype.isAuthenticated() && stop.get()) {
                 return;
             }
             try {
-                Endpoints.PING_URL.open(skype)
-                        .expect(200, "While maintaining session")
-                        .header("Content-Type", "application/x-www-form-urlencoded")
-                        .cookies(skype.getCookies())
-                        .connect("POST", "sessionId=" + skype.getGuid().toString());
+                HttpURLConnection conn = Endpoints.PETOKEN.open(skype).dontConnect().get();
+                try {
+                    JsonObject object = Utils.parseJsonObject(conn.getInputStream());
+                    String token = object.get("token").asString();
+
+                    Endpoints.custom("https://static-asm.secure.skypeassets.com/token/token_to_cookies?vdms_skype_token=" + token, skype)
+                            .dontConnect()
+                            .get();
+
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+
             } catch (ConnectionException e) {
+                logger.log(Level.INFO, "__ServerPingThread exception occurred ");
                 skype.handleError(ErrorSource.SERVER_PING, e, false); // After reviewing source this appears correct
             }
             if (stop.get()) {
@@ -64,7 +81,7 @@ public class ServerPingThread extends Thread {
 
     public void kill() {
         this.stop.set(true);
-        System.out.println("ServerPingThread is shutting down");
         this.interrupt();
+        logger.log(Level.INFO, "__ServerPingThread is shutting down");
     }
 }

@@ -24,21 +24,18 @@ public interface ReceivedFile {
 
     /**
      * Get the name of the file which has been sent
-     *
      * @return The name of the file
      */
     String getName();
 
     /**
      * Get the size of the file
-     *
      * @return The filesize
      */
     long getSize();
 
     /**
      * Get the tid. Not sure what this does
-     *
      * @return The tid
      */
     long getTid();

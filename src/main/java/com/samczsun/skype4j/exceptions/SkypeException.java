@@ -29,7 +29,6 @@ public class SkypeException extends Exception {
     public SkypeException(String message) {
         super(message);
     }
-
     public SkypeException(String message, Exception chain) {
         super(message, chain);
     }

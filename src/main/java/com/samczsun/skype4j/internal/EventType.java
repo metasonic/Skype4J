@@ -17,6 +17,7 @@
 package com.samczsun.skype4j.internal;
 
 import com.eclipsesource.json.JsonObject;
+import com.samczsun.skype4j.events.StatusEvent;
 import com.samczsun.skype4j.exceptions.SkypeException;
 import org.jsoup.helper.Validate;
 
@@ -30,11 +31,17 @@ public enum EventType {
     NEW_MESSAGE("NewMessage") {
         @Override
         public void handle(SkypeImpl skype, JsonObject eventObj) throws SkypeException, IOException {
+
             JsonObject resource = eventObj.get("resource").asObject();
             String type = Utils.getString(resource, "messagetype");
+            String content = Utils.getString(resource, "content");
             try {
-                Validate.notNull(type, "Null type");
-                MessageType.getByName(type).handle(skype, resource);
+                if (content == null) {
+                    MessageType.TEXT_INTERNAL.handle(skype, resource);
+                } else {
+                    Validate.notNull(type, "Null type");
+                    MessageType.getByName(type).handle(skype, resource);
+                }
             } catch (Throwable t) {
                 t.addSuppressed(new SkypeException(resource.toString()));
                 throw t;
@@ -81,7 +88,8 @@ public enum EventType {
     USER_PRESENCE("UserPresence") {
         @Override
         public void handle(SkypeImpl skype, JsonObject resource) {
-
+            StatusEvent event = new StatusEvent(skype, resource);
+            skype.getEventDispatcher().callEvent(event);
         }
     },
     CONVERSATION_UPDATE("ConversationUpdate") {
@@ -101,6 +109,21 @@ public enum EventType {
 
 
     private static final Map<String, EventType> byValue = new HashMap<>();
+    private final String value;
+
+    EventType(String value) {
+        this.value = value;
+    }
+
+    public String getValue() {
+        return this.value;
+    }
+
+    public static EventType getByName(String eventType) {
+        return byValue.get(eventType);
+    }
+
+    public abstract void handle(SkypeImpl skype, JsonObject resource) throws SkypeException, IOException;
 
     static {
         for (EventType type : values()) {
@@ -108,23 +131,7 @@ public enum EventType {
         }
     }
 
-    private final String value;
-
-    EventType(String value) {
-        this.value = value;
-    }
-
-    public static EventType getByName(String eventType) {
-        return byValue.get(eventType);
-    }
-
     private static IllegalArgumentException conformError(String object) {
         return new IllegalArgumentException(String.format("%s did not conform to format expected", object));
     }
-
-    public String getValue() {
-        return this.value;
-    }
-
-    public abstract void handle(SkypeImpl skype, JsonObject resource) throws SkypeException, IOException;
 }

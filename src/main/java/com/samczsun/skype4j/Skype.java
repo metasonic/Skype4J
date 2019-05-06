@@ -16,13 +16,16 @@
 
 package com.samczsun.skype4j;
 
+import com.eclipsesource.json.JsonArray;
 import com.samczsun.skype4j.chat.Chat;
 import com.samczsun.skype4j.chat.GroupChat;
 import com.samczsun.skype4j.events.EventDispatcher;
 import com.samczsun.skype4j.exceptions.*;
 import com.samczsun.skype4j.exceptions.handler.ErrorSource;
+import com.samczsun.skype4j.internal.searchresult.SkypeDirSearchResult;
 import com.samczsun.skype4j.participants.info.BotInfo;
 import com.samczsun.skype4j.participants.info.Contact;
+import com.samczsun.skype4j.participants.info.Self;
 
 import java.util.Collection;
 import java.util.List;
@@ -32,7 +35,7 @@ import java.util.logging.Logger;
  * This class represents a single Skype account, which may or may not have been logged in
  */
 public interface Skype {
-    String VERSION = "908/1.117.0.21//skype.com";
+    String VERSION = "908/1.52.0.82//skype.com";
 
     RuntimeException UNEXPECTED = new RuntimeException("Please open a GitHub issue with this stacktrace, something unexpected happened");
 
@@ -40,7 +43,7 @@ public interface Skype {
      * Log into Skype. This will perform the following actions:
      * 1) Log into Skype to get a SkypeToken
      * 2) Register an endpoint to get a RegistrationToken
-     * <p>
+     *
      * Note that the SkypeToken technically expires after 24 hours. The vanilla implementation in Skype for Web
      * is to redirect you to the login screen. As such, roughly half an hour before 24 hours is hit, the API
      * will attempt to re-login and, if subscribed, resubscribe.
@@ -48,9 +51,10 @@ public interface Skype {
      * @throws InvalidCredentialsException If you've provided invalid credentials or if you hit a CAPTCHA
      * @throws ConnectionException         If a network error occured while connecting
      * @throws NotParticipatingException   If the guest account cannot log in due to the chat not being open
+     * @throws com.samczsun.skype4j.exceptions.WrongPasswordException
+     * @throws com.samczsun.skype4j.exceptions.AccountNotFoundException
      */
-    void login() throws InvalidCredentialsException, ConnectionException, NotParticipatingException,
-            SkypeAuthenticationException;
+    void login() throws InvalidCredentialsException, ConnectionException, NotParticipatingException, WrongPasswordException, AccountNotFoundException;
 
     /**
      * Subscribe to the HTTP long polling service.
@@ -67,6 +71,8 @@ public interface Skype {
      * @return The username
      */
     String getUsername();
+
+    String getLiveUsername();
 
     /**
      * Get a {@link Chat} based on the identity given. The chat must already be loaded
@@ -151,6 +157,18 @@ public interface Skype {
      */
     void loadAllContacts() throws ConnectionException;
 
+    /**
+     * Load user profile info
+     *
+     * @throws ConnectionException If an exception occured while fetching profile info
+     */
+    void loadSelf() throws ConnectionException;
+
+    /**
+     * @return the users info
+     */
+    Self getSelf();
+
 
     /*
      * Gets (and loads if not loaded) the bot info given a bot id (28:{uuid})
@@ -211,6 +229,27 @@ public interface Skype {
      * @throws ConnectionException If an error occurs while connecting to the endpoint
      */
     void setVisibility(Visibility visibility) throws ConnectionException;
+
+    /**
+     * Adds an existing skype bot to your contacts list
+     * @param skypeBotId The id of the skype bot
+     */
+    void addSkypeBotAsContact(String skypeBotId);
+
+    /**
+     * Search skype directory for id
+     * @param skypeId The id of the user we need to find on skype
+     * @return SkypeDirSearchResult
+     */
+    List<SkypeDirSearchResult> searchSkypeDirForId(String skypeId);
+
+    /**
+     * Get Skype id profile info
+     * @param skypeId The id of the user we need to find on skype
+     * @return JsonArray
+     */
+    JsonArray getSkypeIdProfileInfo(String skypeId);
+
 
     void handleError(ErrorSource errorSource, Throwable throwable, boolean shutdown);
 }
